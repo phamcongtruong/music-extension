@@ -140,11 +140,45 @@ body {
 }
 
 .time-display span {
-    transition: color 0.2s ease;
+    transition: all 0.3s ease;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.5px;
+    min-width: 50px;
+    text-align: center;
 }
 
 .time-display span:hover {
     color: #ffd700;
+    background: rgba(255, 215, 0, 0.1);
+    border-color: rgba(255, 215, 0, 0.3);
+    transform: scale(1.05);
+    box-shadow: 0 2px 10px rgba(255, 215, 0, 0.2);
+}
+
+/* Animation cho time change */
+.time-display span {
+    animation-duration: 0.3s;
+    animation-timing-function: ease-out;
+}
+
+/* Hiệu ứng khi đang playing */
+.music-player.playing .time-display span {
+    background: rgba(102, 126, 234, 0.1);
+    border-color: rgba(102, 126, 234, 0.2);
+    box-shadow: 0 0 10px rgba(102, 126, 234, 0.1);
+}
+
+/* Current time có màu khác để nhấn mạnh */
+#currentTimeDisplay {
+    background: rgba(255, 215, 0, 0.1) !important;
+    border-color: rgba(255, 215, 0, 0.2) !important;
+    color: #ffd700 !important;
+    font-weight: 600;
 }
 
 .progress-bar {
@@ -439,6 +473,37 @@ body {
 .playlist-item-info p {
     font-size: 0.8rem;
     color: rgba(255, 255, 255, 0.6);
+    transition: all 0.3s ease;
+}
+
+/* Hiệu ứng cho time progress trong playlist */
+.playlist-item.active .playlist-item-info p {
+    color: rgba(255, 215, 0, 0.9);
+    font-weight: 500;
+}
+
+.time-progress {
+    display: inline-block;
+    padding: 2px 6px;
+    background: rgba(255, 215, 0, 0.15);
+    border-radius: 4px;
+    font-weight: 600;
+    color: #ffd700 !important;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.3px;
+    transition: all 0.3s ease;
+    animation: pulse-time 2s ease-in-out infinite;
+}
+
+@keyframes pulse-time {
+    0%, 100% {
+        background: rgba(255, 215, 0, 0.15);
+        box-shadow: 0 0 0 rgba(255, 215, 0, 0.3);
+    }
+    50% {
+        background: rgba(255, 215, 0, 0.25);
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+    }
 }
 
 .playlist-item-actions {
@@ -937,6 +1002,92 @@ body {
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+/* Enhanced Time Display Animations */
+@keyframes timeChangeIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.8) translateY(-10px);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1) translateY(0);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes timeChangeOut {
+    0% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.8) translateY(10px);
+    }
+}
+
+@keyframes progressPulse {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(102, 126, 234, 0.7);
+    }
+}
+
+@keyframes timeSync {
+    0% {
+        background: rgba(255, 215, 0, 0.1);
+        transform: scale(1);
+    }
+    50% {
+        background: rgba(255, 215, 0, 0.3);
+        transform: scale(1.02);
+    }
+    100% {
+        background: rgba(255, 215, 0, 0.1);
+        transform: scale(1);
+    }
+}
+
+/* Classes for JavaScript animation triggers */
+.time-changing {
+    animation: timeChangeIn 0.3s ease-out;
+}
+
+.time-syncing #currentTimeDisplay {
+    animation: timeSync 0.5s ease-in-out;
+}
+
+.progress-syncing .progress {
+    animation: progressPulse 0.3s ease-in-out;
+}
+
+/* Smooth transitions for time displays */
+.time-display span {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced playlist time progress animation */
+.playlist-item.active .time-progress {
+    animation: pulse-time 3s ease-in-out infinite;
+    background: linear-gradient(45deg, rgba(255, 215, 0, 0.2), rgba(102, 126, 234, 0.2));
+}
+
+/* Progress bar smooth animation when seeking */
+.progress-seeking .progress {
+    transition: width 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.progress-seeking .progress-handle {
+    transition: left 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transform: translate(-50%, -50%) scale(1.2);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
 }
 
 /* Responsive */

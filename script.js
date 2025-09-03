@@ -16,6 +16,10 @@ class MusicPlayer {
         this.youtubePlayerReady = false;
         this.useIframeMethod = false; // Fallback to basic iframe
         
+        // Progress tracking intervals
+        this.youtubeProgressInterval = null;
+        this.audioProgressInterval = null;
+        
         this.initializeElements();
         this.initializeEventListeners();
         
@@ -112,13 +116,22 @@ class MusicPlayer {
         // Volume scroll wheel support
         this.volumeBar.addEventListener('wheel', (e) => this.handleVolumeScroll(e));
         
-        // Audio events
+        // Audio events với tối ưu cho smooth time updates
         this.audio.addEventListener('loadedmetadata', () => this.updateDuration());
         this.audio.addEventListener('timeupdate', () => this.updateProgress());
         this.audio.addEventListener('ended', () => this.onTrackEnded());
         this.audio.addEventListener('error', (e) => this.onAudioError(e));
         this.audio.addEventListener('loadstart', () => this.resetProgressDisplay());
         this.audio.addEventListener('canplay', () => this.updateProgress());
+        
+        // Thêm event cho smooth progress tracking
+        this.audio.addEventListener('play', () => {
+            this.startSmoothProgressTracking();
+        });
+        
+        this.audio.addEventListener('pause', () => {
+            this.stopSmoothProgressTracking();
+        });
         
         // Modal events
         this.addSongBtn.addEventListener('click', () => this.showModal());
@@ -279,17 +292,39 @@ class MusicPlayer {
             clearInterval(this.youtubeProgressInterval);
         }
         
+        // Tăng tần suất update để mượt mà hơn
         this.youtubeProgressInterval = setInterval(() => {
             if (this.youtubePlayer && this.currentPlayerType === 'youtube') {
                 this.updateProgress(); // Use our enhanced updateProgress method
             }
-        }, 500); // Update every 500ms for smooth progress
+        }, 250); // Update every 250ms cho smooth progress hơn
     }
 
     stopYouTubeProgressTracking() {
         if (this.youtubeProgressInterval) {
             clearInterval(this.youtubeProgressInterval);
             this.youtubeProgressInterval = null;
+        }
+    }
+
+    // Functions cho smooth progress tracking cho audio player
+    startSmoothProgressTracking() {
+        if (this.audioProgressInterval) {
+            clearInterval(this.audioProgressInterval);
+        }
+        
+        // Update progress mượt mà cho audio player
+        this.audioProgressInterval = setInterval(() => {
+            if (this.currentPlayerType === 'audio' && !this.audio.paused && this.audio.duration) {
+                this.updateProgress();
+            }
+        }, 100); // Update every 100ms cho cực kỳ smooth
+    }
+
+    stopSmoothProgressTracking() {
+        if (this.audioProgressInterval) {
+            clearInterval(this.audioProgressInterval);
+            this.audioProgressInterval = null;
         }
     }
 
@@ -568,8 +603,9 @@ class MusicPlayer {
             iframeContainer.innerHTML = '<div id="youtube-player"></div>';
         }
         
-        // Stop progress tracking
+        // Stop all progress tracking
         this.stopYouTubeProgressTracking();
+        this.stopSmoothProgressTracking();
         
         // Reset UI
         this.isPlaying = false;
@@ -850,12 +886,15 @@ class MusicPlayer {
     }
 
     showSeekFeedback(percentage, newTime) {
+        // Add progress seeking class for smooth animation
+        this.progressBar.classList.add('progress-seeking');
+        
         // Temporarily update progress display for immediate feedback
         this.progress.style.width = `${percentage * 100}%`;
         this.progressHandle.style.left = `${percentage * 100}%`;
         this.currentTimeDisplay.textContent = this.formatTime(newTime);
         
-        // Add visual feedback
+        // Add visual feedback with enhanced animation
         this.progressHandle.style.opacity = '1';
         this.progressHandle.style.transform = 'translate(-50%, -50%) scale(1.3)';
         this.progress.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.7)';
@@ -864,6 +903,7 @@ class MusicPlayer {
         setTimeout(() => {
             this.progressHandle.style.transform = 'translate(-50%, -50%) scale(1)';
             this.progress.style.boxShadow = 'none';
+            this.progressBar.classList.remove('progress-seeking');
         }, 200);
     }
 
@@ -1181,34 +1221,139 @@ class MusicPlayer {
 
         // Update progress bar and handle with smooth animation
         this.updateProgressDisplay(percentage, currentTime, duration);
+        
+        // Đồng bộ thời gian với playlist hiện tại
+        this.syncTimeWithPlaylist(currentTime, duration);
     }
 
     updateProgressDisplay(percentage, currentTime, duration) {
-        // Update progress bar width
+        // Update progress bar width với smooth transition
         this.progress.style.width = `${percentage}%`;
         
-        // Update progress handle position
+        // Update progress handle position với smooth animation
         this.progressHandle.style.left = `${percentage}%`;
         
-        // Update time displays with formatted time
-        this.currentTimeDisplay.textContent = this.formatTime(currentTime);
-        this.totalTimeDisplay.textContent = this.formatTime(duration);
+        // Format và update time displays với animation
+        const formattedCurrentTime = this.formatTime(currentTime);
+        const formattedDuration = this.formatTime(duration);
+        
+        // Chỉ update text nếu khác với giá trị hiện tại để tránh flicker
+        if (this.currentTimeDisplay.textContent !== formattedCurrentTime) {
+            this.animateTimeChange(this.currentTimeDisplay, formattedCurrentTime);
+        }
+        
+        if (this.totalTimeDisplay.textContent !== formattedDuration) {
+            this.animateTimeChange(this.totalTimeDisplay, formattedDuration);
+        }
         
         // Add visual feedback for progress updates
-        this.addProgressUpdateFeedback(percentage);
+        this.addProgressUpdateFeedback(percentage, currentTime, duration);
         
-        // Update document title with current track info (optional)
+        // Update document title with current track info
         this.updateDocumentTitle(currentTime, duration);
+        
+        // Update playlist item với current time
+        this.updateActivePlaylistItemTime(currentTime, duration);
     }
 
-    addProgressUpdateFeedback(percentage) {
-        // Add subtle glow effect when progress updates
-        if (percentage > 0) {
-            this.progress.style.boxShadow = '0 0 15px rgba(102, 126, 234, 0.6)';
+    // Hàm mới để animate text changes
+    animateTimeChange(element, newText) {
+        // Thêm class cho animation
+        element.classList.add('time-changing');
+        
+        // Tạo hiệu ứng fade khi đổi text
+        element.style.opacity = '0.7';
+        element.style.transform = 'scale(0.95)';
+        
+        setTimeout(() => {
+            element.textContent = newText;
+            element.style.opacity = '1';
+            element.style.transform = 'scale(1)';
             
-            // Reset glow after short delay
+            // Remove animation class sau khi hoàn thành
+            setTimeout(() => {
+                element.classList.remove('time-changing');
+            }, 300);
+        }, 50);
+    }
+
+    // Đồng bộ thời gian với playlist
+    syncTimeWithPlaylist(currentTime, duration) {
+        const currentTrack = this.playlist[this.currentTrackIndex];
+        if (currentTrack && duration > 0) {
+            // Update duration nếu chưa có hoặc khác
+            const newDuration = this.formatTime(duration);
+            if (currentTrack.duration !== newDuration) {
+                currentTrack.duration = newDuration;
+                this.playlist[this.currentTrackIndex] = currentTrack;
+                
+                // Update playlist display với thời gian mới
+                this.updatePlaylistItemDuration(this.currentTrackIndex, newDuration);
+            }
+            
+            // Thêm class cho time sync animation
+            if (this.isPlaying) {
+                document.querySelector('.music-player').classList.add('time-syncing');
+                setTimeout(() => {
+                    document.querySelector('.music-player').classList.remove('time-syncing');
+                }, 500);
+            }
+        }
+    }
+
+    // Update thời gian trong playlist item đang active
+    updateActivePlaylistItemTime(currentTime, duration) {
+        const activeItem = document.querySelector('.playlist-item.active');
+        if (activeItem && duration > 0) {
+            const timeInfo = activeItem.querySelector('.playlist-item-info p');
+            if (timeInfo) {
+                const currentTrack = this.playlist[this.currentTrackIndex];
+                const progress = `${this.formatTime(currentTime)} / ${this.formatTime(duration)}`;
+                const newText = `${currentTrack.artist} • ${progress}`;
+                
+                // Chỉ update nếu khác để tránh flicker
+                if (!timeInfo.textContent.includes(this.formatTime(currentTime))) {
+                    timeInfo.innerHTML = `${currentTrack.artist} • <span class="time-progress">${progress}</span>`;
+                }
+            }
+        }
+    }
+
+    // Update duration của một playlist item cụ thể
+    updatePlaylistItemDuration(index, newDuration) {
+        const playlistItems = document.querySelectorAll('.playlist-item');
+        if (playlistItems[index]) {
+            const timeInfo = playlistItems[index].querySelector('.playlist-item-info p');
+            if (timeInfo) {
+                const track = this.playlist[index];
+                if (index === this.currentTrackIndex && this.isPlaying) {
+                    // Giữ nguyên format với current time cho active item
+                    return;
+                } else {
+                    // Update static duration cho inactive items
+                    timeInfo.textContent = `${track.artist} • ${newDuration}`;
+                }
+            }
+        }
+    }
+
+    addProgressUpdateFeedback(percentage, currentTime, duration) {
+        // Add subtle glow effect when progress updates với thông tin thời gian
+        if (percentage > 0 && this.isPlaying) {
+            // Thêm hiệu ứng glow cho progress bar
+            this.progress.style.boxShadow = '0 0 15px rgba(102, 126, 234, 0.6)';
+            this.progressHandle.style.boxShadow = '0 0 10px rgba(102, 126, 234, 0.8)';
+            
+            // Hiệu ứng pulse cho time displays
+            this.currentTimeDisplay.style.color = '#667eea';
+            this.totalTimeDisplay.style.color = '#667eea';
+            
+            // Reset effects after short delay
             setTimeout(() => {
                 this.progress.style.boxShadow = 'none';
+                this.progressHandle.style.boxShadow = 'none';
+                this.currentTimeDisplay.style.color = '';
+                this.totalTimeDisplay.style.color = '';
             }, 100);
         }
     }
@@ -1228,9 +1373,24 @@ class MusicPlayer {
         // Reset progress display when no track is loaded
         this.progress.style.width = '0%';
         this.progressHandle.style.left = '0%';
-        this.currentTimeDisplay.textContent = '0:00';
-        this.totalTimeDisplay.textContent = '0:00';
+        
+        // Animate reset với smooth transition
+        this.animateTimeChange(this.currentTimeDisplay, '0:00');
+        this.animateTimeChange(this.totalTimeDisplay, '0:00');
+        
         document.title = 'Music Player Dashboard';
+        
+        // Reset active playlist item time display
+        const activeItem = document.querySelector('.playlist-item.active');
+        if (activeItem) {
+            const timeInfo = activeItem.querySelector('.playlist-item-info p');
+            if (timeInfo) {
+                const currentTrack = this.playlist[this.currentTrackIndex];
+                if (currentTrack) {
+                    timeInfo.textContent = `${currentTrack.artist} • ${currentTrack.duration || '0:00'}`;
+                }
+            }
+        }
     }
 
     updateDuration() {
@@ -1249,12 +1409,36 @@ class MusicPlayer {
         const minutes = Math.floor((seconds % 3600) / 60);
         const remainingSeconds = Math.floor(seconds % 60);
 
-        // Format based on duration
+        // Format based on duration với zero-padding
         if (hours > 0) {
             // For videos/tracks longer than 1 hour
             return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
         } else {
-            // Standard format for most tracks
+            // Standard format for most tracks với better formatting
+            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+    }
+
+    // Enhanced format time với tối ưu cho hiển thị
+    formatTimeForDisplay(seconds, isLive = false) {
+        if (isLive) {
+            return 'LIVE';
+        }
+        
+        if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) {
+            return '0:00';
+        }
+
+        // Cho hiển thị thời gian với format đẹp hơn
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const remainingSeconds = Math.floor(seconds % 60);
+
+        if (hours > 0) {
+            return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+        } else if (minutes > 60) {
+            return `${Math.floor(minutes / 60)}h ${(minutes % 60).toString().padStart(2, '0')}m`;
+        } else {
             return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
         }
     }
