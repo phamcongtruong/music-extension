@@ -33,6 +33,11 @@ class MusicPlayer {
         // Set initial volume
         this.audio.volume = this.volume;
         this.updateVolumeDisplay();
+        
+        // Ensure volume handle is positioned correctly on initialization
+        setTimeout(() => {
+            this.updateVolumeDisplay();
+        }, 100);
     }
 
     initializeElements() {
@@ -883,8 +888,17 @@ class MusicPlayer {
 
     startVolumeDrag(e) {
         e.preventDefault();
+        
+        // Disable transition during drag for responsive feel
+        this.volumeHandle.style.transition = 'none';
+        this.volumeProgress.style.transition = 'none';
+        
         const onMouseMove = (e) => this.onVolumeDrag(e);
         const onMouseUp = () => {
+            // Re-enable transitions when drag ends
+            this.volumeHandle.style.transition = 'left 0.15s ease, transform 0.15s ease, box-shadow 0.2s ease';
+            this.volumeProgress.style.transition = 'width 0.15s ease';
+            
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
         };
@@ -913,12 +927,33 @@ class MusicPlayer {
 
     updateVolumeDisplay() {
         const percentage = this.volume * 100;
+        
+        // Update volume progress bar width
         this.volumeProgress.style.width = `${percentage}%`;
+        
+        // Update volume handle position (ensure it moves with the volume level)
         this.volumeHandle.style.left = `${percentage}%`;
+        
+        // Update volume text
         this.volumeText.textContent = `${Math.round(percentage)}%`;
         
         // Update volume icon based on volume level
         this.updateVolumeIcon();
+        
+        // Add visual feedback for volume changes
+        this.addVolumeChangeFeedback();
+    }
+
+    addVolumeChangeFeedback() {
+        // Add temporary highlight effect to show volume change
+        this.volumeHandle.style.transform = 'translate(-50%, -50%) scale(1.2)';
+        this.volumeProgress.style.boxShadow = '0 0 15px rgba(255, 215, 0, 0.5)';
+        
+        // Reset after short delay
+        setTimeout(() => {
+            this.volumeHandle.style.transform = 'translate(-50%, -50%) scale(1)';
+            this.volumeProgress.style.boxShadow = '0 0 10px rgba(255, 215, 0, 0.3)';
+        }, 150);
     }
 
     updateVolumeIcon() {

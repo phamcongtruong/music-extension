@@ -243,13 +243,14 @@ body {
     height: 100%;
     background: linear-gradient(90deg, #667eea, #764ba2);
     border-radius: 3px;
-    width: 70%;
+    width: 70%; /* Initial width - will be updated by JavaScript */
+    transition: width 0.15s ease;
 }
 
 .volume-handle {
     position: absolute;
     top: 50%;
-    left: 70%;
+    left: 70%; /* Initial position - will be updated by JavaScript */
     width: 14px;
     height: 14px;
     background: #fff;
@@ -257,6 +258,8 @@ body {
     transform: translate(-50%, -50%);
     cursor: pointer;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: left 0.15s ease, transform 0.15s ease, box-shadow 0.2s ease;
+    z-index: 2;
 }
 
 .volume-text {
