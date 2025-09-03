@@ -48,9 +48,34 @@ class MusicPlayer {
         // Ensure volume handle is positioned correctly on initialization
         setTimeout(() => {
             this.updateVolumeDisplay();
-            // Initialize time display với giá trị mặc định
-            this.updateTimeDisplay();
+            // Initialize time display với giá trị mặc định CodePen-style
+            this.initializeProgressSection();
         }, 100);
+    }
+
+    // CodePen-style progress section initialization
+    initializeProgressSection() {
+        console.log('🎯 Initializing CodePen-style progress section');
+        
+        // Set default values
+        this.currentTime = 0;
+        this.duration = 0;
+        
+        // Update display
+        this.updateTimeDisplay();
+        
+        // Add playing class management
+        this.updatePlayerState();
+    }
+
+    // CodePen-style player state management
+    updatePlayerState() {
+        const musicPlayer = document.querySelector('.music-player');
+        if (this.isPlaying) {
+            musicPlayer.classList.add('playing');
+        } else {
+            musicPlayer.classList.remove('playing');
+        }
     }
 
     initializeElements() {
@@ -70,6 +95,7 @@ class MusicPlayer {
         this.totalTimeDisplay = document.getElementById('totalTimeDisplay');
         
         // Progress bars
+        this.progressContainer = document.querySelector('.progress-container');
         this.progressBar = document.querySelector('.progress-bar');
         this.progress = document.getElementById('progress');
         this.progressHandle = document.getElementById('progressHandle');
@@ -312,14 +338,16 @@ class MusicPlayer {
         }, 2000);
     }
 
-    // Thuật toán time tracking đơn giản như CodePen
+    // CodePen-style state-based timer
     startProgressTimer() {
         this.stopProgressTimer(); // Clear any existing timer
-        console.log('Starting progress timer');
+        console.log('🎵 Starting CodePen-style timer');
         
         this.progressInterval = setInterval(() => {
-            this.updateCurrentTime();
-        }, 250); // Update every 250ms như CodePen
+            if (this.isPlaying) {
+                this.updateCurrentTime();
+            }
+        }, 200); // Faster update như CodePen (200ms)
     }
 
     stopProgressTimer() {
@@ -356,36 +384,59 @@ class MusicPlayer {
         this.updateTimeDisplay();
     }
 
-    // Hàm cập nhật hiển thị thời gian - đơn giản như CodePen
+    // CodePen-style progress algorithm - simple và direct
     updateTimeDisplay() {
         if (!this.currentTimeDisplay || !this.totalTimeDisplay) {
             return;
         }
 
-        // Format time theo pattern CodePen
-        const currentTimeFormatted = this.formatTime(this.currentTime);
-        const durationFormatted = this.formatTime(this.duration);
+        // Format time theo CodePen pattern
+        const currentTimeText = this.formatTime(this.currentTime);
+        const durationText = this.formatTime(this.duration);
         
-        // Direct DOM update
-        this.currentTimeDisplay.textContent = currentTimeFormatted;
-        this.totalTimeDisplay.textContent = durationFormatted;
+        // Direct DOM update như CodePen
+        this.currentTimeDisplay.textContent = currentTimeText;
+        this.totalTimeDisplay.textContent = durationText;
         
-        // Update progress bar
-        if (this.duration > 0) {
-            const percentage = Math.min((this.currentTime / this.duration) * 100, 100);
-            this.progress.style.width = percentage + '%';
-            this.progressHandle.style.left = percentage + '%';
-        }
+        // Update progress bar theo CodePen style
+        this.updateProgressBar();
+        
+        console.log(`⏱️ ${currentTimeText}/${durationText}`);
+    }
 
-        // Debug log
-        console.log(`Time: ${currentTimeFormatted}/${durationFormatted} (${this.currentPlayerType})`);
+    // CodePen-style progress bar update
+    updateProgressBar() {
+        if (!this.progress || !this.progressHandle) return;
+        
+        if (this.duration > 0) {
+            // Calculate progress percentage
+            const percentage = Math.min((this.currentTime / this.duration) * 100, 100);
+            
+            // Update progress bar như CodePen
+            this.progress.style.width = `${percentage}%`;
+            this.progressHandle.style.left = `${percentage}%`;
+            
+            // Show handle when playing (CodePen behavior)
+            if (this.isPlaying) {
+                this.progressHandle.style.opacity = '1';
+            }
+        } else {
+            // Reset when no duration
+            this.progress.style.width = '0%';
+            this.progressHandle.style.left = '0%';
+            this.progressHandle.style.opacity = '0';
+        }
     }
 
     updatePauseButtonUI() {
         this.playBtn.innerHTML = '<i class="fas fa-play"></i>';
         this.mainPlayBtn.innerHTML = '<i class="fas fa-play"></i>';
-        document.querySelector('.music-player').classList.remove('playing');
+        
+        // CodePen-style state management
+        this.updatePlayerState();
         this.stopProgressTimer();
+        
+        console.log('⏸️ Paused - CodePen style UI updated');
     }
 
     loadPlaylist() {
@@ -727,10 +778,12 @@ class MusicPlayer {
     updatePlayButtonUI() {
         this.playBtn.innerHTML = '<i class="fas fa-pause"></i>';
         this.mainPlayBtn.innerHTML = '<i class="fas fa-pause"></i>';
-        document.querySelector('.music-player').classList.add('playing');
         
-        // Bắt đầu progress timer cho tất cả loại player
+        // CodePen-style state management
+        this.updatePlayerState();
         this.startProgressTimer();
+        
+        console.log('▶️ Playing - CodePen style UI updated');
     }
     
     autoSkipToNextTrack() {
@@ -923,31 +976,53 @@ class MusicPlayer {
         }, 4000);
     }
 
+    // CodePen-style seeking algorithm
     seekTo(e) {
         const rect = this.progressBar.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
         const percentage = Math.max(0, Math.min(clickX / rect.width, 1));
         
-        console.log('Seeking to:', percentage * 100 + '%');
+        console.log('🎯 CodePen seek to:', Math.round(percentage * 100) + '%');
 
-        if (this.currentPlayerType === 'audio' && this.audio.duration > 0) {
-            const newTime = percentage * this.audio.duration;
+        // Calculate new time
+        let newTime = 0;
+        if (this.duration > 0) {
+            newTime = percentage * this.duration;
+        }
+
+        // Apply seek based on player type
+        if (this.currentPlayerType === 'audio' && this.audio.src) {
             this.audio.currentTime = newTime;
-            this.currentTime = newTime;
-            this.updateTimeDisplay();
         } else if (this.currentPlayerType === 'youtube' && this.youtubePlayer && this.youtubePlayerReady) {
             try {
-                const duration = this.youtubePlayer.getDuration();
-                if (duration > 0) {
-                    const newTime = percentage * duration;
-                    this.youtubePlayer.seekTo(newTime, true);
-                    this.currentTime = newTime;
-                    this.updateTimeDisplay();
-                }
+                this.youtubePlayer.seekTo(newTime, true);
             } catch (e) {
                 console.warn('YouTube seek error:', e);
+                return;
             }
         }
+
+        // Update state immediately - CodePen pattern
+        this.currentTime = newTime;
+        this.updateTimeDisplay();
+        
+        // Visual feedback như CodePen
+        this.showSeekFeedback(percentage);
+    }
+
+    // CodePen-style visual feedback
+    showSeekFeedback(percentage) {
+        // Immediate visual update
+        this.progress.style.width = `${percentage * 100}%`;
+        this.progressHandle.style.left = `${percentage * 100}%`;
+        this.progressHandle.style.opacity = '1';
+        
+        // Brief scale animation như CodePen
+        this.progressHandle.style.transform = 'translate(-50%, -50%) scale(1.2)';
+        
+        setTimeout(() => {
+            this.progressHandle.style.transform = 'translate(-50%, -50%) scale(1)';
+        }, 150);
     }
 
     showSeekFeedback(percentage, newTime) {

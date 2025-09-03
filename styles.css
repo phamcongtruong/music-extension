@@ -124,131 +124,97 @@ body {
     font-weight: 400;
 }
 
-/* Progress Section */
+/* CodePen-style Progress Section */
 .progress-section {
     margin-bottom: 25px;
     padding: 15px 0;
 }
 
+/* CodePen-style time display */
 .time-display {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 12px;
-    font-size: 0.9rem;
+    margin-bottom: 16px;
+    font-size: 0.95rem;
     color: rgba(255, 255, 255, 0.9);
     font-weight: 500;
 }
 
 .time-display span {
-    transition: all 0.3s ease;
-    padding: 4px 8px;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.05);
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.5px;
-    min-width: 50px;
+    min-width: 55px;
     text-align: center;
+    transition: all 0.3s ease;
 }
 
 .time-display span:hover {
-    color: #ffd700;
-    background: rgba(255, 215, 0, 0.1);
-    border-color: rgba(255, 215, 0, 0.3);
-    transform: scale(1.05);
-    box-shadow: 0 2px 10px rgba(255, 215, 0, 0.2);
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateY(-1px);
 }
 
-/* Animation cho time change */
-.time-display span {
-    animation-duration: 0.3s;
-    animation-timing-function: ease-out;
-}
-
-/* Hiệu ứng khi đang playing */
-.music-player.playing .time-display span {
-    background: rgba(102, 126, 234, 0.1);
-    border-color: rgba(102, 126, 234, 0.2);
-    box-shadow: 0 0 10px rgba(102, 126, 234, 0.1);
-}
-
-/* Current time có màu khác để nhấn mạnh */
+/* Current time highlighting */
 #currentTimeDisplay {
-    background: rgba(255, 215, 0, 0.1) !important;
-    border-color: rgba(255, 215, 0, 0.2) !important;
-    color: #ffd700 !important;
+    background: rgba(102, 126, 234, 0.15) !important;
+    border-color: rgba(102, 126, 234, 0.3) !important;
+    color: #667eea !important;
     font-weight: 600;
+}
+
+.progress-container {
+    position: relative;
+    margin: 12px 0;
 }
 
 .progress-bar {
     position: relative;
-    height: 8px;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 4px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
     cursor: pointer;
-    transition: all 0.2s ease;
-    margin: 8px 0;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    overflow: hidden;
 }
 
 .progress-bar:hover {
-    height: 10px;
-    background: rgba(255, 255, 255, 0.2);
+    height: 8px;
+    background: rgba(255, 255, 255, 0.15);
 }
 
 .progress {
     height: 100%;
-    background: linear-gradient(90deg, #667eea, #764ba2, #ffd700);
-    border-radius: 4px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 3px;
     width: 0%;
-    transition: width 0.1s ease;
+    transition: width 0.2s ease-out;
     position: relative;
-    overflow: hidden;
 }
 
-.progress::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-    animation: shimmer 2s infinite;
-    opacity: 0.7;
-}
-
-@keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-}
-
+/* CodePen-style progress handle */
 .progress-handle {
     position: absolute;
     top: 50%;
     left: 0%;
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     background: #fff;
-    border: 3px solid #ffd700;
+    border: 2px solid #667eea;
     border-radius: 50%;
     transform: translate(-50%, -50%);
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 215, 0, 0.4);
     opacity: 0;
     transition: all 0.3s ease;
-    z-index: 3;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-.progress-bar:hover .progress-handle {
+.progress-bar:hover .progress-handle,
+.music-player.playing .progress-handle {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1.1);
-}
-
-.progress-handle:active {
-    transform: translate(-50%, -50%) scale(1.2);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4), 0 0 30px rgba(255, 215, 0, 0.6);
 }
 
 /* Controls */
