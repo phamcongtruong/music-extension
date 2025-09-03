@@ -10,10 +10,6 @@ class MusicPlayer {
         this.isMuted = false;
         this.playlist = [];
         
-        // Progress tracking properties
-        this.syncEffectActive = false;
-        this.lastProgressUpdate = 0;
-        
         // YouTube Player properties
         this.youtubePlayer = null;
         this.currentPlayerType = 'audio'; // 'audio' or 'youtube'
@@ -121,6 +117,8 @@ class MusicPlayer {
         this.audio.addEventListener('timeupdate', () => this.updateProgress());
         this.audio.addEventListener('ended', () => this.onTrackEnded());
         this.audio.addEventListener('error', (e) => this.onAudioError(e));
+        this.audio.addEventListener('loadstart', () => this.resetProgressDisplay());
+        this.audio.addEventListener('canplay', () => this.updateProgress());
         
         // Modal events
         this.addSongBtn.addEventListener('click', () => this.showModal());
@@ -281,45 +279,11 @@ class MusicPlayer {
             clearInterval(this.youtubeProgressInterval);
         }
         
-        // Use faster interval for smoother progress updates
         this.youtubeProgressInterval = setInterval(() => {
-            if (this.youtubePlayer && this.currentPlayerType === 'youtube' && this.youtubePlayerReady) {
-                try {
-                    const currentTime = this.youtubePlayer.getCurrentTime();
-                    const duration = this.youtubePlayer.getDuration();
-                    
-                    if (duration > 0 && !isNaN(currentTime) && !isNaN(duration)) {
-                        const percentage = (currentTime / duration) * 100;
-                        
-                        // Update progress with smooth animation
-                        this.progress.style.width = `${percentage}%`;
-                        this.progressHandle.style.left = `${percentage}%`;
-                        
-                        // Update time displays
-                        this.currentTimeDisplay.textContent = this.formatTime(currentTime);
-                        this.totalTimeDisplay.textContent = this.formatTime(duration);
-                        
-                        // Add visual feedback for real-time sync
-                        this.addRealTimeSyncEffect();
-                    }
-                } catch (error) {
-                    console.warn('Error getting YouTube player time:', error);
-                }
+            if (this.youtubePlayer && this.currentPlayerType === 'youtube') {
+                this.updateProgress(); // Use our enhanced updateProgress method
             }
-        }, 250); // Update every 250ms for smoother progress
-    }
-
-    addRealTimeSyncEffect() {
-        // Add subtle pulse effect to show real-time sync
-        if (!this.syncEffectActive) {
-            this.syncEffectActive = true;
-            this.progressHandle.style.transform = 'translate(-50%, -50%) scale(1.05)';
-            
-            setTimeout(() => {
-                this.progressHandle.style.transform = 'translate(-50%, -50%) scale(1)';
-                this.syncEffectActive = false;
-            }, 100);
-        }
+        }, 500); // Update every 500ms for smooth progress
     }
 
     stopYouTubeProgressTracking() {
@@ -857,104 +821,66 @@ class MusicPlayer {
     seekTo(e) {
         const rect = this.progressBar.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
-        const percentage = Math.max(0, Math.min(clickX / rect.width, 1)); // Clamp between 0 and 1
+        const percentage = Math.max(0, Math.min(clickX / rect.width, 1));
         
+        let duration = 0;
+        let newTime = 0;
+
         if (this.currentPlayerType === 'youtube' && this.youtubePlayer && this.youtubePlayerReady) {
-            const duration = this.youtubePlayer.getDuration();
-            const newTime = percentage * duration;
-            if (!isNaN(newTime) && duration > 0) {
-                this.youtubePlayer.seekTo(newTime, true);
-                // Immediately update UI for responsive feel
-                this.updateProgressUI(percentage, newTime, duration);
-                this.showSeekFeedback(percentage);
+            try {
+                duration = this.youtubePlayer.getDuration();
+                newTime = percentage * duration;
+                
+                if (!isNaN(newTime) && duration > 0) {
+                    this.youtubePlayer.seekTo(newTime, true);
+                    this.showSeekFeedback(percentage, newTime);
+                }
+            } catch (error) {
+                console.warn('Error seeking YouTube player:', error);
             }
         } else if (this.currentPlayerType === 'audio' && this.audio.duration) {
-            const newTime = percentage * this.audio.duration;
+            duration = this.audio.duration;
+            newTime = percentage * duration;
+            
             if (!isNaN(newTime)) {
                 this.audio.currentTime = newTime;
-                // Immediately update UI
-                this.updateProgressUI(percentage, newTime, this.audio.duration);
-                this.showSeekFeedback(percentage);
+                this.showSeekFeedback(percentage, newTime);
             }
         }
     }
 
-    updateProgressUI(percentage, currentTime, duration) {
-        // Immediately update progress bar and handle
+    showSeekFeedback(percentage, newTime) {
+        // Temporarily update progress display for immediate feedback
         this.progress.style.width = `${percentage * 100}%`;
         this.progressHandle.style.left = `${percentage * 100}%`;
+        this.currentTimeDisplay.textContent = this.formatTime(newTime);
         
-        // Update time displays
-        this.currentTimeDisplay.textContent = this.formatTime(currentTime);
-        this.totalTimeDisplay.textContent = this.formatTime(duration);
-    }
-
-    showSeekFeedback(percentage) {
-        // Visual feedback for seeking
+        // Add visual feedback
+        this.progressHandle.style.opacity = '1';
         this.progressHandle.style.transform = 'translate(-50%, -50%) scale(1.3)';
-        this.progressHandle.style.boxShadow = '0 0 20px rgba(102, 126, 234, 0.8)';
-        this.progress.style.boxShadow = '0 0 15px rgba(102, 126, 234, 0.6)';
+        this.progress.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.7)';
         
-        // Show seek percentage
-        this.showSeekNotification(`${Math.round(percentage * 100)}%`);
-        
-        // Reset after delay
+        // Reset visual feedback
         setTimeout(() => {
             this.progressHandle.style.transform = 'translate(-50%, -50%) scale(1)';
-            this.progressHandle.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
-            this.progress.style.boxShadow = '0 0 5px rgba(102, 126, 234, 0.3)';
-        }, 300);
-    }
-
-    showSeekNotification(percentage) {
-        // Remove existing seek notification
-        const existing = document.querySelector('.seek-notification');
-        if (existing) {
-            existing.remove();
-        }
-        
-        const notification = document.createElement('div');
-        notification.className = 'seek-notification';
-        notification.innerHTML = `
-            <i class="fas fa-forward"></i>
-            <span>Tua đến ${percentage}</span>
-        `;
-        
-        notification.style.cssText = `
-            position: fixed;
-            top: 60%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(102, 126, 234, 0.9);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            z-index: 10001;
-            font-size: 16px;
-            font-weight: 500;
-            animation: fadeInScale 0.2s ease;
-            backdrop-filter: blur(10px);
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Auto remove after 1 second
-        setTimeout(() => {
-            if (notification.parentElement) {
-                notification.style.animation = 'fadeOutScale 0.2s ease';
-                setTimeout(() => notification.remove(), 200);
-            }
-        }, 1000);
+            this.progress.style.boxShadow = 'none';
+        }, 200);
     }
 
     startProgressDrag(e) {
         e.preventDefault();
+        
+        // Show handle during drag
+        this.progressHandle.style.opacity = '1';
+        this.progressHandle.style.transition = 'none';
+        this.progress.style.transition = 'none';
+        
         const onMouseMove = (e) => this.onProgressDrag(e);
         const onMouseUp = () => {
+            // Re-enable transitions
+            this.progressHandle.style.transition = 'all 0.3s ease';
+            this.progress.style.transition = 'width 0.1s ease';
+            
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
         };
@@ -968,20 +894,33 @@ class MusicPlayer {
         const clickX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
         const percentage = clickX / rect.width;
         
+        // Update visual feedback immediately
+        this.progress.style.width = `${percentage * 100}%`;
+        this.progressHandle.style.left = `${percentage * 100}%`;
+        
+        // Calculate and update time based on player type
+        let duration = 0;
+        let newTime = 0;
+
         if (this.currentPlayerType === 'youtube' && this.youtubePlayer && this.youtubePlayerReady) {
-            const duration = this.youtubePlayer.getDuration();
-            const newTime = percentage * duration;
-            if (!isNaN(newTime) && duration > 0) {
-                this.youtubePlayer.seekTo(newTime, true);
-                // Real-time UI update during drag
-                this.updateProgressUI(percentage, newTime, duration);
+            try {
+                duration = this.youtubePlayer.getDuration();
+                newTime = percentage * duration;
+                
+                if (!isNaN(newTime) && duration > 0) {
+                    this.youtubePlayer.seekTo(newTime, true);
+                    this.currentTimeDisplay.textContent = this.formatTime(newTime);
+                }
+            } catch (error) {
+                console.warn('Error during YouTube drag:', error);
             }
         } else if (this.currentPlayerType === 'audio' && this.audio.duration) {
-            const newTime = percentage * this.audio.duration;
+            duration = this.audio.duration;
+            newTime = percentage * duration;
+            
             if (!isNaN(newTime)) {
                 this.audio.currentTime = newTime;
-                // Real-time UI update during drag
-                this.updateProgressUI(percentage, newTime, this.audio.duration);
+                this.currentTimeDisplay.textContent = this.formatTime(newTime);
             }
         }
     }
@@ -1212,63 +1151,112 @@ class MusicPlayer {
     }
 
     updateProgress() {
-        // Handle different player types
+        let currentTime = 0;
+        let duration = 0;
+        let percentage = 0;
+
         if (this.currentPlayerType === 'youtube' && this.youtubePlayer && this.youtubePlayerReady) {
             // YouTube player progress
-            const currentTime = this.youtubePlayer.getCurrentTime();
-            const duration = this.youtubePlayer.getDuration();
-            
-            if (duration > 0 && !isNaN(currentTime) && !isNaN(duration)) {
-                const percentage = (currentTime / duration) * 100;
-                this.progress.style.width = `${percentage}%`;
-                this.progressHandle.style.left = `${percentage}%`;
-                
-                this.currentTimeDisplay.textContent = this.formatTime(currentTime);
-                this.totalTimeDisplay.textContent = this.formatTime(duration);
+            try {
+                currentTime = this.youtubePlayer.getCurrentTime() || 0;
+                duration = this.youtubePlayer.getDuration() || 0;
+            } catch (error) {
+                console.warn('Error getting YouTube player time:', error);
+                return;
             }
         } else if (this.currentPlayerType === 'audio' && this.audio.duration) {
             // Audio player progress
-            const percentage = (this.audio.currentTime / this.audio.duration) * 100;
-            this.progress.style.width = `${percentage}%`;
-            this.progressHandle.style.left = `${percentage}%`;
-            
-            this.currentTimeDisplay.textContent = this.formatTime(this.audio.currentTime);
-            this.totalTimeDisplay.textContent = this.formatTime(this.audio.duration);
+            currentTime = this.audio.currentTime || 0;
+            duration = this.audio.duration || 0;
+        } else {
+            // No valid player or duration
+            this.resetProgressDisplay();
+            return;
         }
-        
-        // Add smooth transition for progress updates
-        this.addProgressUpdateEffect();
+
+        // Calculate percentage (ensure we don't divide by zero)
+        if (duration > 0) {
+            percentage = Math.min(100, Math.max(0, (currentTime / duration) * 100));
+        }
+
+        // Update progress bar and handle with smooth animation
+        this.updateProgressDisplay(percentage, currentTime, duration);
     }
 
-    addProgressUpdateEffect() {
-        // Add subtle glow effect to show progress is updating
-        this.progress.style.boxShadow = '0 0 8px rgba(102, 126, 234, 0.6)';
-        this.progressHandle.style.boxShadow = '0 2px 12px rgba(102, 126, 234, 0.4)';
+    updateProgressDisplay(percentage, currentTime, duration) {
+        // Update progress bar width
+        this.progress.style.width = `${percentage}%`;
         
-        // Reset after short delay
-        setTimeout(() => {
-            this.progress.style.boxShadow = '0 0 5px rgba(102, 126, 234, 0.3)';
-            this.progressHandle.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
-        }, 200);
+        // Update progress handle position
+        this.progressHandle.style.left = `${percentage}%`;
+        
+        // Update time displays with formatted time
+        this.currentTimeDisplay.textContent = this.formatTime(currentTime);
+        this.totalTimeDisplay.textContent = this.formatTime(duration);
+        
+        // Add visual feedback for progress updates
+        this.addProgressUpdateFeedback(percentage);
+        
+        // Update document title with current track info (optional)
+        this.updateDocumentTitle(currentTime, duration);
+    }
+
+    addProgressUpdateFeedback(percentage) {
+        // Add subtle glow effect when progress updates
+        if (percentage > 0) {
+            this.progress.style.boxShadow = '0 0 15px rgba(102, 126, 234, 0.6)';
+            
+            // Reset glow after short delay
+            setTimeout(() => {
+                this.progress.style.boxShadow = 'none';
+            }, 100);
+        }
+    }
+
+    updateDocumentTitle(currentTime, duration) {
+        // Update browser tab title with current track progress
+        const currentTrack = this.playlist[this.currentTrackIndex];
+        if (currentTrack && this.isPlaying) {
+            const timeString = `${this.formatTime(currentTime)} / ${this.formatTime(duration)}`;
+            document.title = `♪ ${currentTrack.title} - ${timeString}`;
+        } else {
+            document.title = 'Music Player Dashboard';
+        }
+    }
+
+    resetProgressDisplay() {
+        // Reset progress display when no track is loaded
+        this.progress.style.width = '0%';
+        this.progressHandle.style.left = '0%';
+        this.currentTimeDisplay.textContent = '0:00';
+        this.totalTimeDisplay.textContent = '0:00';
+        document.title = 'Music Player Dashboard';
     }
 
     updateDuration() {
-        if (this.currentPlayerType === 'youtube' && this.youtubePlayer && this.youtubePlayerReady) {
-            // YouTube player duration
-            const duration = this.youtubePlayer.getDuration();
-            if (duration > 0 && !isNaN(duration)) {
-                this.totalTimeDisplay.textContent = this.formatTime(duration);
-            }
-        } else if (this.currentPlayerType === 'audio' && this.audio.duration) {
-            // Audio player duration
+        if (this.audio.duration) {
             this.totalTimeDisplay.textContent = this.formatTime(this.audio.duration);
         }
     }
 
     formatTime(seconds) {
-        const minutes = Math.floor(seconds / 60);
+        // Handle invalid or infinite values
+        if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) {
+            return '0:00';
+        }
+
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
         const remainingSeconds = Math.floor(seconds % 60);
-        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+
+        // Format based on duration
+        if (hours > 0) {
+            // For videos/tracks longer than 1 hour
+            return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+        } else {
+            // Standard format for most tracks
+            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
     }
 
     updateClock() {
