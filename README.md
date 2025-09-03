@@ -151,5 +151,3 @@ If you have any questions or issues, please feel free to:
 ---
 
 **Enjoy your music with this beautiful player! 🎵🎶**
-
-Made with ❤️ by GitHub Copilot
