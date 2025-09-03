@@ -10,6 +10,7 @@
   "host_permissions": [
     "https://raw.githubusercontent.com/*",
     "https://*.youtube.com/*",
+    "https://*.googleapis.com/*",
     "https://*.learningcontainer.com/*",
     "https://*.file-examples.com/*",
     "https://*.soundjay.com/*",
@@ -30,6 +31,6 @@
     "128": "icons/icon128.png"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'"
+    "extension_pages": "script-src 'self' https://www.youtube.com https://s.ytimg.com; object-src 'self'"
   }
 }

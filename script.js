@@ -8,8 +8,16 @@ class MusicPlayer {
         this.volume = 0.7;
         this.playlist = [];
         
+        // YouTube Player properties
+        this.youtubePlayer = null;
+        this.currentPlayerType = 'audio'; // 'audio' or 'youtube'
+        this.youtubePlayerReady = false;
+        
         this.initializeElements();
         this.initializeEventListeners();
+        
+        // Initialize YouTube API
+        this.initializeYouTubeAPI();
         
         // Load playlist async và cập nhật UI sau khi hoàn thành
         this.loadRemotePlaylist().then(() => {
@@ -111,6 +119,144 @@ class MusicPlayer {
         
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeyboard(e));
+    }
+
+    // YouTube API Integration
+    initializeYouTubeAPI() {
+        // Set up initial placeholder for YouTube API ready
+        window.onYouTubeIframeAPIReady = () => {
+            this.initializeYouTubePlayer();
+        };
+        
+        // If API is already loaded, initialize immediately
+        if (window.YT && window.YT.Player) {
+            this.initializeYouTubePlayer();
+        }
+    }
+
+    initializeYouTubePlayer() {
+        console.log('Initializing YouTube Player...');
+        try {
+            this.youtubePlayer = new YT.Player('youtube-player', {
+                height: '0',
+                width: '0',
+                playerVars: {
+                    'playsinline': 1,
+                    'controls': 0,
+                    'disablekb': 1,
+                    'fs': 0,
+                    'modestbranding': 1,
+                    'rel': 0,
+                    'iv_load_policy': 3
+                },
+                events: {
+                    'onReady': (event) => this.onYouTubePlayerReady(event),
+                    'onStateChange': (event) => this.onYouTubePlayerStateChange(event),
+                    'onError': (event) => this.onYouTubePlayerError(event)
+                }
+            });
+        } catch (error) {
+            console.error('Failed to initialize YouTube Player:', error);
+        }
+    }
+
+    onYouTubePlayerReady(event) {
+        console.log('YouTube Player Ready');
+        this.youtubePlayerReady = true;
+        this.youtubePlayer.setVolume(this.volume * 100);
+    }
+
+    onYouTubePlayerStateChange(event) {
+        console.log('YouTube Player State Change:', event.data);
+        
+        switch (event.data) {
+            case YT.PlayerState.PLAYING:
+                this.isPlaying = true;
+                this.updatePlayButtonUI();
+                this.startYouTubeProgressTracking();
+                break;
+            case YT.PlayerState.PAUSED:
+                this.isPlaying = false;
+                this.updatePauseButtonUI();
+                this.stopYouTubeProgressTracking();
+                break;
+            case YT.PlayerState.ENDED:
+                this.onTrackEnded();
+                break;
+            case YT.PlayerState.BUFFERING:
+                // Handle buffering if needed
+                break;
+        }
+    }
+
+    onYouTubePlayerError(event) {
+        console.error('YouTube Player Error:', event.data);
+        this.handleYouTubeError(event.data);
+    }
+
+    handleYouTubeError(errorCode) {
+        const currentTrack = this.playlist[this.currentTrackIndex];
+        let errorMessage = `Lỗi phát video YouTube "${currentTrack?.title}"`;
+        
+        switch (errorCode) {
+            case 2:
+                errorMessage += ': ID video không hợp lệ';
+                break;
+            case 5:
+                errorMessage += ': Video không thể phát trên HTML5 player';
+                break;
+            case 100:
+                errorMessage += ': Video không tồn tại hoặc bị xóa';
+                break;
+            case 101:
+            case 150:
+                errorMessage += ': Video bị hạn chế nhúng';
+                break;
+        }
+        
+        this.showErrorNotification(errorMessage);
+        
+        // Auto skip to next track
+        setTimeout(() => {
+            if (this.playlist.length > 1) {
+                this.nextTrack();
+            }
+        }, 2000);
+    }
+
+    startYouTubeProgressTracking() {
+        if (this.youtubeProgressInterval) {
+            clearInterval(this.youtubeProgressInterval);
+        }
+        
+        this.youtubeProgressInterval = setInterval(() => {
+            if (this.youtubePlayer && this.currentPlayerType === 'youtube') {
+                const currentTime = this.youtubePlayer.getCurrentTime();
+                const duration = this.youtubePlayer.getDuration();
+                
+                if (duration > 0) {
+                    const percentage = (currentTime / duration) * 100;
+                    this.progress.style.width = `${percentage}%`;
+                    this.progressHandle.style.left = `${percentage}%`;
+                    
+                    this.currentTimeDisplay.textContent = this.formatTime(currentTime);
+                    this.totalTimeDisplay.textContent = this.formatTime(duration);
+                }
+            }
+        }, 1000);
+    }
+
+    stopYouTubeProgressTracking() {
+        if (this.youtubeProgressInterval) {
+            clearInterval(this.youtubeProgressInterval);
+            this.youtubeProgressInterval = null;
+        }
+    }
+
+    updatePauseButtonUI() {
+        this.playBtn.innerHTML = '<i class="fas fa-play"></i>';
+        this.mainPlayBtn.innerHTML = '<i class="fas fa-play"></i>';
+        document.querySelector('.music-player').classList.remove('playing');
     }
 
     loadPlaylist() {
@@ -283,33 +429,33 @@ class MusicPlayer {
     
     async attemptPlayback(track) {
         try {
-            if (track.type === 'youtube') {
-                console.log('YouTube track detected - checking for fallback...');
+            // Stop any current playback
+            this.stopCurrentPlayback();
+            
+            if (track.type === 'youtube' || this.isYouTubeURL(track.url)) {
+                console.log('YouTube track detected - using YouTube Player...');
                 
-                if (track.audioFallback) {
-                    console.log('Using audio fallback for YouTube track:', track.audioFallback);
-                    await this.playAudioUrl(track.audioFallback);
-                    console.log('Successfully playing audio fallback');
-                } else {
-                    console.log('No audio fallback available for YouTube track');
-                    this.showErrorNotification(`Không thể phát "${track.title}". YouTube tracks cần audio fallback.`);
-                    this.autoSkipToNextTrack();
-                    return;
+                const videoId = this.extractVideoId(track.url);
+                if (!videoId) {
+                    throw new Error('Không thể trích xuất Video ID từ URL YouTube');
                 }
-            } else if (this.isYouTubeURL(track.url)) {
-                // Legacy YouTube URL detection
-                console.log('Legacy YouTube URL detected, checking for fallback...');
-                if (track.audioFallback) {
-                    console.log('Using audio fallback for legacy YouTube URL:', track.audioFallback);
-                    await this.playAudioUrl(track.audioFallback);
-                } else {
-                    this.showErrorNotification(`Bài "${track.title}" là video YouTube - không thể phát trong extension.`);
-                    this.autoSkipToNextTrack();
-                    return;
+                
+                if (!this.youtubePlayerReady) {
+                    throw new Error('YouTube Player chưa sẵn sàng');
                 }
+                
+                console.log('Playing YouTube video ID:', videoId);
+                this.currentPlayerType = 'youtube';
+                
+                // Load and play YouTube video
+                this.youtubePlayer.loadVideoById(videoId);
+                this.youtubePlayer.setVolume(this.volume * 100);
+                
+                console.log('Successfully initiated YouTube playback');
             } else {
                 // Direct audio file
                 console.log('Playing direct audio file:', track.url);
+                this.currentPlayerType = 'audio';
                 await this.playAudioUrl(track.url);
                 console.log('Successfully playing direct audio');
             }
@@ -317,10 +463,11 @@ class MusicPlayer {
         } catch (error) {
             console.error('Primary playback failed:', error);
             
-            // Try fallback if available and not already used
-            if (track.audioFallback && track.type !== 'youtube' && !this.isYouTubeURL(track.url)) {
-                console.log('Attempting fallback URL...');
+            // Try fallback if available
+            if (track.audioFallback && this.currentPlayerType !== 'audio') {
+                console.log('Attempting audio fallback...');
                 try {
+                    this.currentPlayerType = 'audio';
                     await this.playAudioUrl(track.audioFallback);
                     console.log('Successfully playing fallback URL');
                 } catch (fallbackError) {
@@ -331,6 +478,30 @@ class MusicPlayer {
                 this.handlePlaybackError(track, error);
             }
         }
+    }
+
+    stopCurrentPlayback() {
+        // Stop audio player
+        if (this.audio && !this.audio.paused) {
+            this.audio.pause();
+            this.audio.currentTime = 0;
+        }
+        
+        // Stop YouTube player
+        if (this.youtubePlayer && this.youtubePlayerReady) {
+            try {
+                this.youtubePlayer.stopVideo();
+            } catch (e) {
+                console.warn('Error stopping YouTube player:', e);
+            }
+        }
+        
+        // Stop progress tracking
+        this.stopYouTubeProgressTracking();
+        
+        // Reset UI
+        this.isPlaying = false;
+        this.updatePauseButtonUI();
     }
     
     async playAudioUrl(url) {
@@ -422,20 +593,42 @@ class MusicPlayer {
             return;
         }
 
-        console.log('Current playing state:', this.isPlaying);
+        console.log('Current playing state:', this.isPlaying, 'Player type:', this.currentPlayerType);
         
         if (this.isPlaying) {
-            // Pause hiện tại
-            console.log('Pausing audio');
-            this.audio.pause();
-            this.isPlaying = false;
-            this.playBtn.innerHTML = '<i class="fas fa-play"></i>';
-            this.mainPlayBtn.innerHTML = '<i class="fas fa-play"></i>';
-            document.querySelector('.music-player').classList.remove('playing');
+            // Pause current playback
+            console.log('Pausing playback');
+            if (this.currentPlayerType === 'youtube' && this.youtubePlayer) {
+                this.youtubePlayer.pauseVideo();
+            } else {
+                this.audio.pause();
+            }
         } else {
-            // Play - luôn luôn gọi playTrack để đảm bảo phát
-            console.log('Starting playback, track index:', this.currentTrackIndex);
-            this.playTrack(this.currentTrackIndex);
+            // Resume or start playback
+            console.log('Starting/resuming playback, track index:', this.currentTrackIndex);
+            
+            if (this.currentPlayerType === 'youtube' && this.youtubePlayer) {
+                // Resume YouTube playback if possible
+                const playerState = this.youtubePlayer.getPlayerState();
+                if (playerState === YT.PlayerState.PAUSED) {
+                    this.youtubePlayer.playVideo();
+                } else {
+                    // Restart the track
+                    this.playTrack(this.currentTrackIndex);
+                }
+            } else if (this.currentPlayerType === 'audio' && this.audio.src) {
+                // Resume audio playback
+                this.audio.play().then(() => {
+                    this.isPlaying = true;
+                    this.updatePlayButtonUI();
+                }).catch(() => {
+                    // If resume fails, restart the track
+                    this.playTrack(this.currentTrackIndex);
+                });
+            } else {
+                // Start fresh playback
+                this.playTrack(this.currentTrackIndex);
+            }
         }
     }
 
@@ -547,10 +740,18 @@ class MusicPlayer {
         const rect = this.progressBar.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
         const percentage = clickX / rect.width;
-        const newTime = percentage * this.audio.duration;
         
-        if (!isNaN(newTime)) {
-            this.audio.currentTime = newTime;
+        if (this.currentPlayerType === 'youtube' && this.youtubePlayer && this.youtubePlayerReady) {
+            const duration = this.youtubePlayer.getDuration();
+            const newTime = percentage * duration;
+            if (!isNaN(newTime) && duration > 0) {
+                this.youtubePlayer.seekTo(newTime, true);
+            }
+        } else {
+            const newTime = percentage * this.audio.duration;
+            if (!isNaN(newTime)) {
+                this.audio.currentTime = newTime;
+            }
         }
     }
 
@@ -584,6 +785,12 @@ class MusicPlayer {
         
         this.volume = percentage;
         this.audio.volume = this.volume;
+        
+        // Update YouTube player volume
+        if (this.youtubePlayer && this.youtubePlayerReady) {
+            this.youtubePlayer.setVolume(this.volume * 100);
+        }
+        
         this.updateVolumeDisplay();
     }
 
@@ -606,6 +813,12 @@ class MusicPlayer {
         
         this.volume = percentage;
         this.audio.volume = this.volume;
+        
+        // Update YouTube player volume
+        if (this.youtubePlayer && this.youtubePlayerReady) {
+            this.youtubePlayer.setVolume(this.volume * 100);
+        }
+        
         this.updateVolumeDisplay();
     }
 
@@ -766,12 +979,18 @@ class MusicPlayer {
                 e.preventDefault();
                 this.volume = Math.min(1, this.volume + 0.1);
                 this.audio.volume = this.volume;
+                if (this.youtubePlayer && this.youtubePlayerReady) {
+                    this.youtubePlayer.setVolume(this.volume * 100);
+                }
                 this.updateVolumeDisplay();
                 break;
             case 'ArrowDown':
                 e.preventDefault();
                 this.volume = Math.max(0, this.volume - 0.1);
                 this.audio.volume = this.volume;
+                if (this.youtubePlayer && this.youtubePlayerReady) {
+                    this.youtubePlayer.setVolume(this.volume * 100);
+                }
                 this.updateVolumeDisplay();
                 break;
         }
@@ -807,12 +1026,12 @@ class MusicPlayer {
                             originalYouTubeUrl: this.isYouTubeURL(item.url) ? item.url : null
                         };
                         
-                        // Nếu là YouTube và không có audioFallback, thêm cảnh báo
-                        if (this.isYouTubeURL(item.url) && !item.audioFallback) {
-                            track.playable = false;
-                            track.warningMessage = "Cần audio fallback để phát";
-                        } else {
-                            track.playable = true;
+                        // Đánh dấu tất cả tracks là playable vì giờ hỗ trợ YouTube
+                        track.playable = true;
+                        
+                        // Nếu là YouTube track, đảm bảo có type đúng
+                        if (this.isYouTubeURL(item.url)) {
+                            track.type = 'youtube';
                         }
                         
                         return track;
@@ -828,10 +1047,10 @@ class MusicPlayer {
                 
                 // Hiển thị thông báo về YouTube tracks
                 const youtubeCount = this.playlist.filter(t => t.type === 'youtube').length;
-                const playableCount = this.playlist.filter(t => t.playable).length;
+                const audioCount = this.playlist.filter(t => t.type === 'audio').length;
                 
                 this.showSuccessNotification(
-                    `Đã tải ${this.playlist.length} bài hát (${playableCount} có thể phát, ${youtubeCount} YouTube)`
+                    `Đã tải ${this.playlist.length} bài hát (${youtubeCount} YouTube, ${audioCount} Audio)`
                 );
                 
                 return;
@@ -851,8 +1070,20 @@ class MusicPlayer {
                 url: "https://www.youtube.com/watch?v=nZonjKs6cTs",
                 duration: "3:24",
                 type: "youtube",
+                playable: true,
                 audioFallback: "https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3",
                 originalYouTubeUrl: "https://www.youtube.com/watch?v=nZonjKs6cTs"
+            },
+            {
+                title: "Lofi Hip Hop - Chill Beats",
+                artist: "YouTube Music",
+                cover: "https://img.youtube.com/vi/jfKfPfyJRdk/mqdefault.jpg",
+                url: "https://www.youtube.com/watch?v=jfKfPfyJRdk",
+                duration: "LIVE",
+                type: "youtube",
+                playable: true,
+                audioFallback: null,
+                originalYouTubeUrl: "https://www.youtube.com/watch?v=jfKfPfyJRdk"
             },
             {
                 title: "Kalimba",
@@ -861,16 +1092,7 @@ class MusicPlayer {
                 url: "https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3",
                 duration: "0:30",
                 type: "audio",
-                audioFallback: null,
-                originalYouTubeUrl: null
-            },
-            {
-                title: "Demo Track",
-                artist: "File Examples",
-                cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop&crop=center",
-                url: "https://file-examples.com/storage/fe68c81b9f66cccbdfa5e5f/2017/11/file_example_MP3_700KB.mp3",
-                duration: "0:27",
-                type: "audio",
+                playable: true,
                 audioFallback: null,
                 originalYouTubeUrl: null
             }
@@ -989,10 +1211,22 @@ class MusicPlayer {
     }
 }
 
+// Global YouTube API Ready handler
+let globalMusicPlayer = null;
+
 // Initialize the music player when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new MusicPlayer();
+    globalMusicPlayer = new MusicPlayer();
+    window.musicPlayer = globalMusicPlayer; // For backward compatibility
 });
+
+// YouTube API Ready callback
+window.onYouTubeIframeAPIReady = function() {
+    console.log('YouTube API Ready - Global Handler');
+    if (globalMusicPlayer && globalMusicPlayer.initializeYouTubePlayer) {
+        globalMusicPlayer.initializeYouTubePlayer();
+    }
+};
 
 // Handle extension popup close/open
 document.addEventListener('visibilitychange', () => {
