@@ -1,0 +1,14 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Test Music Player",
+			"type": "shell",
+			"command": "echo",
+			"args": [
+				"Testing music player with new CodePen-style algorithm"
+			],
+			"group": "test"
+		}
+	]
+}

@@ -20,7 +20,6 @@ class MusicPlayer {
         this.progressInterval = null;
         this.currentTime = 0;
         this.duration = 0;
-        this.isUpdating = false;
         
         this.initializeElements();
         this.initializeEventListeners();
@@ -49,6 +48,8 @@ class MusicPlayer {
         // Ensure volume handle is positioned correctly on initialization
         setTimeout(() => {
             this.updateVolumeDisplay();
+            // Initialize time display với giá trị mặc định
+            this.updateTimeDisplay();
         }, 100);
     }
 
@@ -124,26 +125,26 @@ class MusicPlayer {
         // Volume scroll wheel support
         this.volumeBar.addEventListener('wheel', (e) => this.handleVolumeScroll(e));
         
-        // Audio events - đơn giản hóa như CodePen
+        // Audio events - đơn giản hóa theo pattern CodePen
         this.audio.addEventListener('loadedmetadata', () => {
             console.log('Audio metadata loaded, duration:', this.audio.duration);
             this.duration = this.audio.duration || 0;
+            this.currentTime = 0;
             this.updateTimeDisplay();
         });
         
-        this.audio.addEventListener('timeupdate', () => {
-            if (!this.isUpdating) {
-                this.currentTime = this.audio.currentTime || 0;
-                this.updateTimeDisplay();
-            }
+        this.audio.addEventListener('ended', () => {
+            this.isPlaying = false;
+            this.stopProgressTimer();
+            this.onTrackEnded();
         });
         
-        this.audio.addEventListener('ended', () => this.onTrackEnded());
         this.audio.addEventListener('error', (e) => this.onAudioError(e));
         
         this.audio.addEventListener('play', () => {
             console.log('Audio play event');
             this.isPlaying = true;
+            this.updatePlayButtonUI();
             this.startProgressTimer();
         });
         
@@ -151,6 +152,7 @@ class MusicPlayer {
             console.log('Audio pause event');
             this.isPlaying = false;
             this.stopProgressTimer();
+            this.updatePauseButtonUI();
         });
         
         // Modal events
@@ -256,18 +258,21 @@ class MusicPlayer {
             case YT.PlayerState.PLAYING:
                 this.isPlaying = true;
                 this.updatePlayButtonUI();
-                this.startYouTubeProgressTracking();
+                this.startProgressTimer(); // Sử dụng timer chung
                 break;
             case YT.PlayerState.PAUSED:
                 this.isPlaying = false;
                 this.updatePauseButtonUI();
-                this.stopYouTubeProgressTracking();
+                this.stopProgressTimer();
                 break;
             case YT.PlayerState.ENDED:
+                this.isPlaying = false;
+                this.stopProgressTimer();
                 this.onTrackEnded();
                 break;
             case YT.PlayerState.BUFFERING:
-                // Handle buffering if needed
+                // Keep timer running during buffering
+                console.log('YouTube buffering...');
                 break;
         }
     }
@@ -307,21 +312,14 @@ class MusicPlayer {
         }, 2000);
     }
 
-    // Thuật toán progress tracking như CodePen
+    // Thuật toán time tracking đơn giản như CodePen
     startProgressTimer() {
-        if (this.progressInterval) {
-            clearInterval(this.progressInterval);
-        }
-        
+        this.stopProgressTimer(); // Clear any existing timer
         console.log('Starting progress timer');
         
         this.progressInterval = setInterval(() => {
-            if (this.isPlaying && this.audio.src && !this.audio.paused) {
-                this.currentTime = this.audio.currentTime || 0;
-                this.duration = this.audio.duration || 0;
-                this.updateTimeDisplay();
-            }
-        }, 100); // Update mỗi 100ms
+            this.updateCurrentTime();
+        }, 250); // Update every 250ms như CodePen
     }
 
     stopProgressTimer() {
@@ -332,31 +330,55 @@ class MusicPlayer {
         console.log('Progress timer stopped');
     }
 
+    // Cập nhật thời gian hiện tại từ player
+    updateCurrentTime() {
+        if (!this.isPlaying) return;
+
+        let currentTime = 0;
+        let duration = 0;
+
+        if (this.currentPlayerType === 'audio' && this.audio.src) {
+            currentTime = this.audio.currentTime || 0;
+            duration = this.audio.duration || 0;
+        } else if (this.currentPlayerType === 'youtube' && this.youtubePlayer && this.youtubePlayerReady) {
+            try {
+                currentTime = this.youtubePlayer.getCurrentTime() || 0;
+                duration = this.youtubePlayer.getDuration() || 0;
+            } catch (e) {
+                console.warn('YouTube player error:', e);
+                return;
+            }
+        }
+
+        // Update state và UI
+        this.currentTime = currentTime;
+        this.duration = duration;
+        this.updateTimeDisplay();
+    }
+
     // Hàm cập nhật hiển thị thời gian - đơn giản như CodePen
     updateTimeDisplay() {
         if (!this.currentTimeDisplay || !this.totalTimeDisplay) {
             return;
         }
 
-        // Format và update time
-        const formattedCurrentTime = this.formatTime(this.currentTime);
-        const formattedDuration = this.formatTime(this.duration);
+        // Format time theo pattern CodePen
+        const currentTimeFormatted = this.formatTime(this.currentTime);
+        const durationFormatted = this.formatTime(this.duration);
         
-        console.log('Updating time display:', formattedCurrentTime, '/', formattedDuration);
-        
-        // Direct update như CodePen
-        this.currentTimeDisplay.textContent = formattedCurrentTime;
-        this.totalTimeDisplay.textContent = formattedDuration;
+        // Direct DOM update
+        this.currentTimeDisplay.textContent = currentTimeFormatted;
+        this.totalTimeDisplay.textContent = durationFormatted;
         
         // Update progress bar
         if (this.duration > 0) {
-            const percentage = (this.currentTime / this.duration) * 100;
-            this.progress.style.width = `${percentage}%`;
-            this.progressHandle.style.left = `${percentage}%`;
+            const percentage = Math.min((this.currentTime / this.duration) * 100, 100);
+            this.progress.style.width = percentage + '%';
+            this.progressHandle.style.left = percentage + '%';
         }
-        
-        // Update document title
-        this.updateDocumentTitle(this.currentTime, this.duration);
+
+        // Debug log
+        console.log(`Time: ${currentTimeFormatted}/${durationFormatted} (${this.currentPlayerType})`);
     }
 
     updatePauseButtonUI() {
@@ -479,6 +501,11 @@ class MusicPlayer {
             console.log('Invalid index, returning');
             return;
         }
+        
+        // Reset time display immediately - pattern CodePen
+        this.currentTime = 0;
+        this.duration = 0;
+        this.updateTimeDisplay();
         
         this.currentTrackIndex = index;
         const track = this.playlist[index];
@@ -901,17 +928,25 @@ class MusicPlayer {
         const clickX = e.clientX - rect.left;
         const percentage = Math.max(0, Math.min(clickX / rect.width, 1));
         
+        console.log('Seeking to:', percentage * 100 + '%');
+
         if (this.currentPlayerType === 'audio' && this.audio.duration > 0) {
-            // Đơn giản hóa như CodePen
-            this.isUpdating = true;
-            this.currentTime = percentage * this.audio.duration;
-            this.audio.currentTime = this.currentTime;
+            const newTime = percentage * this.audio.duration;
+            this.audio.currentTime = newTime;
+            this.currentTime = newTime;
             this.updateTimeDisplay();
-            
-            // Reset flag sau một chút
-            setTimeout(() => {
-                this.isUpdating = false;
-            }, 100);
+        } else if (this.currentPlayerType === 'youtube' && this.youtubePlayer && this.youtubePlayerReady) {
+            try {
+                const duration = this.youtubePlayer.getDuration();
+                if (duration > 0) {
+                    const newTime = percentage * duration;
+                    this.youtubePlayer.seekTo(newTime, true);
+                    this.currentTime = newTime;
+                    this.updateTimeDisplay();
+                }
+            } catch (e) {
+                console.warn('YouTube seek error:', e);
+            }
         }
     }
 
@@ -1446,7 +1481,7 @@ class MusicPlayer {
     }
 
     formatTime(seconds) {
-        // Handle invalid or infinite values
+        // Handle invalid values - pattern như CodePen
         if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) {
             return '0:00';
         }
@@ -1454,7 +1489,7 @@ class MusicPlayer {
         const minutes = Math.floor(seconds / 60);
         const remainingSeconds = Math.floor(seconds % 60);
 
-        // Simple format như CodePen
+        // Format đơn giản như CodePen: mm:ss
         return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
     }
 
