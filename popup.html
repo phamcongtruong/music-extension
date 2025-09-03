@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Player Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="music-player">
+        <!-- Header -->
+        <div class="header">
+            <h1><i class="fas fa-music"></i> Music Dashboard</h1>
+            <div class="time" id="currentTime"></div>
+        </div>
+
+        <!-- Main Player -->
+        <div class="main-player">
+            <div class="album-art">
+                <img id="albumCover" src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center" alt="Album Cover">
+                <div class="play-overlay">
+                    <button class="play-btn" id="playBtn">
+                        <i class="fas fa-play"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="track-info">
+                <h3 id="trackTitle">Chọn bài hát để phát</h3>
+                <p id="trackArtist">Nghệ sĩ</p>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-section">
+            <div class="time-display">
+                <span id="currentTimeDisplay">0:00</span>
+                <span id="totalTimeDisplay">0:00</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress" id="progress"></div>
+                <div class="progress-handle" id="progressHandle"></div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button class="control-btn" id="shuffleBtn">
+                <i class="fas fa-random"></i>
+            </button>
+            <button class="control-btn" id="prevBtn">
+                <i class="fas fa-step-backward"></i>
+            </button>
+            <button class="control-btn main-control" id="mainPlayBtn">
+                <i class="fas fa-play"></i>
+            </button>
+            <button class="control-btn" id="nextBtn">
+                <i class="fas fa-step-forward"></i>
+            </button>
+            <button class="control-btn" id="repeatBtn">
+                <i class="fas fa-redo"></i>
+            </button>
+        </div>
+
+        <!-- Volume Control -->
+        <div class="volume-section">
+            <i class="fas fa-volume-up volume-icon"></i>
+            <div class="volume-bar">
+                <div class="volume-progress" id="volumeProgress"></div>
+                <div class="volume-handle" id="volumeHandle"></div>
+            </div>
+            <span class="volume-text" id="volumeText">70%</span>
+        </div>
+
+        <!-- Playlist -->
+        <div class="playlist-section">
+            <div class="section-header">
+                <h4><i class="fas fa-list"></i> Playlist</h4>
+                <div class="playlist-actions">
+                    <button class="refresh-btn" id="refreshPlaylistBtn" title="Tải lại từ GitHub">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button class="add-song-btn" id="addSongBtn" title="Thêm bài hát">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="playlist" id="playlist">
+                <!-- Playlist items will be added here -->
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-section">
+            <div class="stat-item">
+                <div class="stat-number" id="totalSongs">0</div>
+                <div class="stat-label">Bài hát</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="totalTime">0:00</div>
+                <div class="stat-label">Tổng thời gian</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="currentPlaylist">1</div>
+                <div class="stat-label">Playlist</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Song Modal -->
+    <div class="modal" id="addSongModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Thêm bài hát mới</h3>
+                <button class="close-btn" id="closeModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label>Tên bài hát:</label>
+                    <input type="text" id="songTitle" placeholder="Nhập tên bài hát">
+                </div>
+                <div class="input-group">
+                    <label>Nghệ sĩ:</label>
+                    <input type="text" id="songArtist" placeholder="Nhập tên nghệ sĩ">
+                </div>
+                <div class="input-group">
+                    <label>URL âm thanh:</label>
+                    <input type="url" id="songUrl" placeholder="https://example.com/song.mp3">
+                </div>
+                <div class="input-group">
+                    <label>URL ảnh bìa:</label>
+                    <input type="url" id="songCover" placeholder="https://example.com/cover.jpg">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-cancel" id="cancelBtn">Hủy</button>
+                    <button class="btn btn-primary" id="addBtn">Thêm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="audioPlayer" preload="metadata"></audio>
+    <script src="script.js"></script>
+</body>
+</html>

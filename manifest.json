@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Music Player Dashboard",
+  "version": "1.0",
+  "description": "Một music player dashboard đẹp với playlist và các tính năng điều khiển âm thanh",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://raw.githubusercontent.com/*",
+    "https://*.youtube.com/*",
+    "https://*.learningcontainer.com/*",
+    "https://*.file-examples.com/*",
+    "https://*.soundjay.com/*",
+    "https://www2.cs.uic.edu/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Music Player Dashboard",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}
