@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Volume Controls</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        
+        .test-instructions {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 300px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .test-instructions h3 {
+            color: #ffd700;
+            margin-bottom: 15px;
+        }
+        
+        .test-instructions ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .test-instructions li {
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .test-instructions li::before {
+            content: "🎵";
+            position: absolute;
+            left: 0;
+        }
+        
+        .volume-demo {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+        }
+        
+        .volume-demo h2 {
+            color: #ffd700;
+            margin-bottom: 20px;
+        }
+        
+        .current-volume {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-instructions">
+        <h3>🎵 Test Volume Controls</h3>
+        <ul>
+            <li><strong>Click vào icon âm lượng</strong> để mute/unmute</li>
+            <li><strong>Phím ↑ ↓</strong> để tăng/giảm âm lượng</li>
+            <li><strong>Phím M</strong> để mute/unmute</li>
+            <li><strong>Scroll</strong> trên thanh âm lượng</li>
+            <li><strong>Click/Drag</strong> thanh âm lượng</li>
+        </ul>
+    </div>
+
+    <div class="music-player">
+        <!-- Header -->
+        <div class="header">
+            <h1><i class="fas fa-music"></i> Volume Test</h1>
+            <div class="time" id="currentTime">12:34</div>
+        </div>
+
+        <!-- Volume Demo Section -->
+        <div class="volume-demo">
+            <h2>🔊 Volume Control Demo</h2>
+            <div class="current-volume" id="currentVolumeText">70%</div>
+        </div>
+
+        <!-- Volume Control -->
+        <div class="volume-section">
+            <i class="fas fa-volume-up volume-icon" aria-label="Click để tắt/bật tiếng" title="Click để tắt/bật tiếng"></i>
+            <div class="volume-bar" title="Click hoặc cuộn để điều chỉnh âm lượng">
+                <div class="volume-progress" id="volumeProgress"></div>
+                <div class="volume-handle" id="volumeHandle"></div>
+            </div>
+            <span class="volume-text" id="volumeText">70%</span>
+        </div>
+
+        <!-- Test Audio -->
+        <audio id="audioPlayer" preload="metadata" loop>
+            <source src="https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3" type="audio/mpeg">
+        </audio>
+
+        <!-- Play/Pause Button for Testing -->
+        <div style="text-align: center; margin-top: 20px;">
+            <button id="testPlayBtn" style="background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px;">
+                <i class="fas fa-play"></i> Test Audio
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Simplified volume test script
+        class VolumeTest {
+            constructor() {
+                this.audio = document.getElementById('audioPlayer');
+                this.volume = 0.7;
+                this.previousVolume = 0.7;
+                this.isMuted = false;
+                
+                this.volumeBar = document.querySelector('.volume-bar');
+                this.volumeProgress = document.getElementById('volumeProgress');
+                this.volumeHandle = document.getElementById('volumeHandle');
+                this.volumeText = document.getElementById('volumeText');
+                this.volumeIcon = document.querySelector('.volume-icon');
+                this.currentVolumeText = document.getElementById('currentVolumeText');
+                this.testPlayBtn = document.getElementById('testPlayBtn');
+                
+                this.initializeEventListeners();
+                this.audio.volume = this.volume;
+                this.updateVolumeDisplay();
+            }
+
+            initializeEventListeners() {
+                // Volume controls
+                this.volumeBar.addEventListener('click', (e) => this.setVolume(e));
+                this.volumeHandle.addEventListener('mousedown', (e) => this.startVolumeDrag(e));
+                this.volumeIcon.addEventListener('click', () => this.toggleMute());
+                this.volumeBar.addEventListener('wheel', (e) => this.handleVolumeScroll(e));
+                
+                // Test play button
+                this.testPlayBtn.addEventListener('click', () => this.toggleAudio());
+                
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => this.handleKeyboard(e));
+            }
+
+            toggleAudio() {
+                if (this.audio.paused) {
+                    this.audio.play();
+                    this.testPlayBtn.innerHTML = '<i class="fas fa-pause"></i> Stop Audio';
+                } else {
+                    this.audio.pause();
+                    this.testPlayBtn.innerHTML = '<i class="fas fa-play"></i> Test Audio';
+                }
+            }
+
+            updateVolumeDisplay() {
+                const percentage = this.volume * 100;
+                this.volumeProgress.style.width = percentage + '%';
+                this.volumeHandle.style.left = percentage + '%';
+                this.volumeText.textContent = Math.round(percentage) + '%';
+                this.currentVolumeText.textContent = Math.round(percentage) + '%';
+                this.updateVolumeIcon();
+            }
+
+            updateVolumeIcon() {
+                const volumeLevel = this.volume;
+                
+                if (this.isMuted || volumeLevel === 0) {
+                    this.volumeIcon.className = 'fas fa-volume-mute volume-icon';
+                } else if (volumeLevel < 0.3) {
+                    this.volumeIcon.className = 'fas fa-volume-off volume-icon';
+                } else if (volumeLevel < 0.7) {
+                    this.volumeIcon.className = 'fas fa-volume-down volume-icon';
+                } else {
+                    this.volumeIcon.className = 'fas fa-volume-up volume-icon';
+                }
+            }
+
+            toggleMute() {
+                if (this.isMuted) {
+                    this.volume = this.previousVolume;
+                    this.isMuted = false;
+                } else {
+                    if (this.volume > 0) {
+                        this.previousVolume = this.volume;
+                    }
+                    this.volume = 0;
+                    this.isMuted = true;
+                }
+                
+                this.audio.volume = this.volume;
+                this.updateVolumeDisplay();
+                
+                const message = this.isMuted ? 'Đã tắt tiếng' : 'Đã bật tiếng (' + Math.round(this.volume * 100) + '%)';
+                this.showVolumeNotification(message);
+            }
+
+            increaseVolume() {
+                if (this.isMuted) {
+                    this.toggleMute();
+                    return;
+                }
+                
+                const oldVolume = this.volume;
+                this.volume = Math.min(1, this.volume + 0.05);
+                
+                if (this.volume !== oldVolume) {
+                    this.audio.volume = this.volume;
+                    this.updateVolumeDisplay();
+                    this.showVolumeNotification(Math.round(this.volume * 100) + '%');
+                }
+            }
+
+            decreaseVolume() {
+                const oldVolume = this.volume;
+                this.volume = Math.max(0, this.volume - 0.05);
+                
+                if (this.volume === 0) {
+                    this.isMuted = true;
+                } else if (this.isMuted) {
+                    this.isMuted = false;
+                }
+                
+                if (this.volume !== oldVolume) {
+                    this.audio.volume = this.volume;
+                    this.updateVolumeDisplay();
+                    this.showVolumeNotification(Math.round(this.volume * 100) + '%');
+                }
+            }
+
+            handleVolumeScroll(e) {
+                e.preventDefault();
+                
+                if (e.deltaY < 0) {
+                    this.increaseVolume();
+                } else {
+                    this.decreaseVolume();
+                }
+            }
+
+            setVolume(e) {
+                const rect = this.volumeBar.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const percentage = Math.max(0, Math.min(clickX / rect.width, 1));
+                
+                this.volume = percentage;
+                
+                if (this.volume > 0) {
+                    this.isMuted = false;
+                } else {
+                    this.isMuted = true;
+                }
+                
+                this.audio.volume = this.volume;
+                this.updateVolumeDisplay();
+            }
+
+            startVolumeDrag(e) {
+                e.preventDefault();
+                const onMouseMove = (e) => this.onVolumeDrag(e);
+                const onMouseUp = () => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+                
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            }
+
+            onVolumeDrag(e) {
+                const rect = this.volumeBar.getBoundingClientRect();
+                const clickX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+                const percentage = clickX / rect.width;
+                
+                this.volume = percentage;
+                
+                if (this.volume > 0) {
+                    this.isMuted = false;
+                } else {
+                    this.isMuted = true;
+                }
+                
+                this.audio.volume = this.volume;
+                this.updateVolumeDisplay();
+            }
+
+            handleKeyboard(e) {
+                if (e.target.tagName === 'INPUT') return;
+                
+                switch (e.code) {
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        this.increaseVolume();
+                        break;
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        this.decreaseVolume();
+                        break;
+                    case 'KeyM':
+                        e.preventDefault();
+                        this.toggleMute();
+                        break;
+                }
+            }
+
+            showVolumeNotification(message) {
+                const existing = document.querySelector('.volume-notification');
+                if (existing) {
+                    existing.remove();
+                }
+                
+                const notification = document.createElement('div');
+                notification.className = 'volume-notification';
+                notification.innerHTML = `
+                    <i class="${this.volumeIcon.className}"></i>
+                    <span>${message}</span>
+                `;
+                
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: rgba(0, 0, 0, 0.85);
+                    color: white;
+                    padding: 16px 24px;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    z-index: 10001;
+                    font-size: 18px;
+                    font-weight: 500;
+                    animation: fadeInScale 0.2s ease;
+                    min-width: 120px;
+                    justify-content: center;
+                    backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                `;
+                
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        notification.style.animation = 'fadeOutScale 0.2s ease';
+                        setTimeout(() => notification.remove(), 200);
+                    }
+                }, 1000);
+            }
+        }
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new VolumeTest();
+        });
+    </script>
+</body>
+</html>

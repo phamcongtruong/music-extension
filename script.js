@@ -6,6 +6,8 @@ class MusicPlayer {
         this.isShuffling = false;
         this.isRepeating = false;
         this.volume = 0.7;
+        this.previousVolume = 0.7; // Lưu âm lượng trước khi mute
+        this.isMuted = false;
         this.playlist = [];
         
         // YouTube Player properties
@@ -59,6 +61,7 @@ class MusicPlayer {
         this.volumeProgress = document.getElementById('volumeProgress');
         this.volumeHandle = document.getElementById('volumeHandle');
         this.volumeText = document.getElementById('volumeText');
+        this.volumeIcon = document.querySelector('.volume-icon');
         
         // Playlist
         this.playlistContainer = document.getElementById('playlist');
@@ -97,6 +100,12 @@ class MusicPlayer {
         // Volume bar
         this.volumeBar.addEventListener('click', (e) => this.setVolume(e));
         this.volumeHandle.addEventListener('mousedown', (e) => this.startVolumeDrag(e));
+        
+        // Volume icon click to mute/unmute
+        this.volumeIcon.addEventListener('click', () => this.toggleMute());
+        
+        // Volume scroll wheel support
+        this.volumeBar.addEventListener('wheel', (e) => this.handleVolumeScroll(e));
         
         // Audio events
         this.audio.addEventListener('loadedmetadata', () => this.updateDuration());
@@ -860,13 +869,15 @@ class MusicPlayer {
         const percentage = Math.max(0, Math.min(clickX / rect.width, 1));
         
         this.volume = percentage;
-        this.audio.volume = this.volume;
         
-        // Update YouTube player volume
-        if (this.youtubePlayer && this.youtubePlayerReady) {
-            this.youtubePlayer.setVolume(this.volume * 100);
+        // Reset mute state if setting volume manually
+        if (this.volume > 0) {
+            this.isMuted = false;
+        } else {
+            this.isMuted = true;
         }
         
+        this.applyVolumeToPlayers();
         this.updateVolumeDisplay();
     }
 
@@ -888,13 +899,15 @@ class MusicPlayer {
         const percentage = clickX / rect.width;
         
         this.volume = percentage;
-        this.audio.volume = this.volume;
         
-        // Update YouTube player volume
-        if (this.youtubePlayer && this.youtubePlayerReady) {
-            this.youtubePlayer.setVolume(this.volume * 100);
+        // Reset mute state if dragging volume
+        if (this.volume > 0) {
+            this.isMuted = false;
+        } else {
+            this.isMuted = true;
         }
         
+        this.applyVolumeToPlayers();
         this.updateVolumeDisplay();
     }
 
@@ -903,6 +916,146 @@ class MusicPlayer {
         this.volumeProgress.style.width = `${percentage}%`;
         this.volumeHandle.style.left = `${percentage}%`;
         this.volumeText.textContent = `${Math.round(percentage)}%`;
+        
+        // Update volume icon based on volume level
+        this.updateVolumeIcon();
+    }
+
+    updateVolumeIcon() {
+        const volumeLevel = this.volume;
+        
+        if (this.isMuted || volumeLevel === 0) {
+            this.volumeIcon.className = 'fas fa-volume-mute volume-icon';
+        } else if (volumeLevel < 0.3) {
+            this.volumeIcon.className = 'fas fa-volume-off volume-icon';
+        } else if (volumeLevel < 0.7) {
+            this.volumeIcon.className = 'fas fa-volume-down volume-icon';
+        } else {
+            this.volumeIcon.className = 'fas fa-volume-up volume-icon';
+        }
+    }
+
+    toggleMute() {
+        if (this.isMuted) {
+            // Unmute: restore previous volume
+            this.volume = this.previousVolume;
+            this.isMuted = false;
+        } else {
+            // Mute: save current volume and set to 0
+            if (this.volume > 0) {
+                this.previousVolume = this.volume;
+            }
+            this.volume = 0;
+            this.isMuted = true;
+        }
+        
+        this.applyVolumeToPlayers();
+        this.updateVolumeDisplay();
+        
+        // Show notification
+        const message = this.isMuted ? 'Đã tắt tiếng' : `Đã bật tiếng (${Math.round(this.volume * 100)}%)`;
+        this.showVolumeNotification(message);
+    }
+
+    increaseVolume() {
+        if (this.isMuted) {
+            this.toggleMute();
+            return;
+        }
+        
+        const oldVolume = this.volume;
+        this.volume = Math.min(1, this.volume + 0.05); // Tăng 5% mỗi lần
+        
+        if (this.volume !== oldVolume) {
+            this.applyVolumeToPlayers();
+            this.updateVolumeDisplay();
+            this.showVolumeNotification(`${Math.round(this.volume * 100)}%`);
+        }
+    }
+
+    decreaseVolume() {
+        const oldVolume = this.volume;
+        this.volume = Math.max(0, this.volume - 0.05); // Giảm 5% mỗi lần
+        
+        if (this.volume === 0) {
+            this.isMuted = true;
+        } else if (this.isMuted) {
+            this.isMuted = false;
+        }
+        
+        if (this.volume !== oldVolume) {
+            this.applyVolumeToPlayers();
+            this.updateVolumeDisplay();
+            this.showVolumeNotification(`${Math.round(this.volume * 100)}%`);
+        }
+    }
+
+    handleVolumeScroll(e) {
+        e.preventDefault();
+        
+        if (e.deltaY < 0) {
+            // Scroll up = increase volume
+            this.increaseVolume();
+        } else {
+            // Scroll down = decrease volume
+            this.decreaseVolume();
+        }
+    }
+
+    applyVolumeToPlayers() {
+        // Apply to audio player
+        this.audio.volume = this.volume;
+        
+        // Apply to YouTube player
+        if (this.youtubePlayer && this.youtubePlayerReady) {
+            this.youtubePlayer.setVolume(this.volume * 100);
+        }
+    }
+
+    showVolumeNotification(message) {
+        // Remove existing volume notification
+        const existing = document.querySelector('.volume-notification');
+        if (existing) {
+            existing.remove();
+        }
+        
+        const notification = document.createElement('div');
+        notification.className = 'volume-notification';
+        notification.innerHTML = `
+            <i class="${this.volumeIcon.className}"></i>
+            <span>${message}</span>
+        `;
+        
+        notification.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 10001;
+            font-size: 18px;
+            font-weight: 500;
+            animation: fadeInScale 0.2s ease;
+            min-width: 120px;
+            justify-content: center;
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Auto remove after 1 second
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.style.animation = 'fadeOutScale 0.2s ease';
+                setTimeout(() => notification.remove(), 200);
+            }
+        }, 1000);
     }
 
     updateProgress() {
@@ -1053,21 +1206,15 @@ class MusicPlayer {
                 break;
             case 'ArrowUp':
                 e.preventDefault();
-                this.volume = Math.min(1, this.volume + 0.1);
-                this.audio.volume = this.volume;
-                if (this.youtubePlayer && this.youtubePlayerReady) {
-                    this.youtubePlayer.setVolume(this.volume * 100);
-                }
-                this.updateVolumeDisplay();
+                this.increaseVolume();
                 break;
             case 'ArrowDown':
                 e.preventDefault();
-                this.volume = Math.max(0, this.volume - 0.1);
-                this.audio.volume = this.volume;
-                if (this.youtubePlayer && this.youtubePlayerReady) {
-                    this.youtubePlayer.setVolume(this.volume * 100);
-                }
-                this.updateVolumeDisplay();
+                this.decreaseVolume();
+                break;
+            case 'KeyM':
+                e.preventDefault();
+                this.toggleMute();
                 break;
         }
     }

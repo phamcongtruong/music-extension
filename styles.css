@@ -871,3 +871,136 @@ body {
         font-size: 1.2rem;
     }
 }
+
+/* Volume Control Enhancements */
+.volume-icon {
+    cursor: pointer !important;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.volume-icon:hover {
+    color: #ffd700 !important;
+    transform: scale(1.1);
+}
+
+.volume-icon:active {
+    transform: scale(0.95);
+}
+
+.volume-bar {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.volume-bar:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.volume-bar:hover .volume-progress {
+    background: linear-gradient(90deg, #ffd700, #ffed4a) !important;
+}
+
+.volume-bar:hover .volume-handle {
+    background: #ffd700 !important;
+    transform: scale(1.2);
+}
+
+/* Volume Notification Animations */
+@keyframes fadeInScale {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+    100% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes fadeOutScale {
+    0% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+}
+
+.volume-notification {
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.volume-notification i {
+    font-size: 20px;
+}
+
+/* Success/Error Notification Animations */
+@keyframes slideInRight {
+    0% {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOutRight {
+    0% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+/* Volume Section Hover Effects */
+.volume-section:hover .volume-text {
+    color: #ffd700 !important;
+    font-weight: 600;
+}
+
+/* Improved Accessibility */
+.volume-icon[aria-label]::before {
+    content: attr(aria-label);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+}
+
+.volume-icon:hover[aria-label]::before {
+    opacity: 1;
+}
+
+/* Volume Handle Enhanced Styling */
+.volume-handle {
+    transition: all 0.2s ease !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.volume-handle:hover {
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4) !important;
+}
+
+/* Volume Progress Enhanced */
+.volume-progress {
+    transition: all 0.2s ease !important;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3) !important;
+}
