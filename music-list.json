@@ -1,11 +1,53 @@
 [
   {
-    "url": "https://www.youtube.com/watch?v=nZonjKs6cTs"
+    "title": "Beautiful Piano Music",
+    "artist": "YouTube Artist",
+    "url": "https://www.youtube.com/watch?v=nZonjKs6cTs",
+    "cover": "https://img.youtube.com/vi/nZonjKs6cTs/mqdefault.jpg",
+    "duration": "3:24",
+    "type": "youtube",
+    "audioFallback": "https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3"
   },
   {
-    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    "title": "Relaxing Guitar",
+    "artist": "YouTube Music",
+    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "cover": "https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg",
+    "duration": "3:32",
+    "type": "youtube",
+    "audioFallback": "https://file-examples.com/storage/fe68c81b9f66cccbdfa5e5f/2017/11/file_example_MP3_700KB.mp3"
   },
   {
-    "url": "https://www.youtube.com/watch?v=3JZ_D3ELwOQ"
+    "title": "Nature Sounds",
+    "artist": "Ambient YouTube",
+    "url": "https://www.youtube.com/watch?v=3JZ_D3ELwOQ",
+    "cover": "https://img.youtube.com/vi/3JZ_D3ELwOQ/mqdefault.jpg",
+    "duration": "2:15",
+    "type": "youtube",
+    "audioFallback": "https://www2.cs.uic.edu/~i101/SoundFiles/BabyElephantWalk60.wav"
+  },
+  {
+    "title": "Kalimba",
+    "artist": "Sample Music",
+    "url": "https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3",
+    "cover": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center",
+    "duration": "0:30",
+    "type": "audio"
+  },
+  {
+    "title": "Demo Track",
+    "artist": "File Examples",
+    "url": "https://file-examples.com/storage/fe68c81b9f66cccbdfa5e5f/2017/11/file_example_MP3_700KB.mp3",
+    "cover": "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop&crop=center",
+    "duration": "0:27",
+    "type": "audio"
+  },
+  {
+    "title": "Baby Elephant Walk",
+    "artist": "Classical",
+    "url": "https://www2.cs.uic.edu/~i101/SoundFiles/BabyElephantWalk60.wav",
+    "cover": "https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=300&h=300&fit=crop&crop=center",
+    "duration": "1:00",
+    "type": "audio"
   }
 ]
