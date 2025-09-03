@@ -23,6 +23,18 @@ class MusicPlayer {
         this.initializeElements();
         this.initializeEventListeners();
         
+        // Test DOM elements
+        console.log('DOM elements check:');
+        console.log('currentTimeDisplay:', this.currentTimeDisplay);
+        console.log('totalTimeDisplay:', this.totalTimeDisplay);
+        console.log('Audio element:', this.audio);
+        
+        // Test time display immediately
+        if (this.currentTimeDisplay) {
+            this.currentTimeDisplay.textContent = '0:01';
+            console.log('Set test time to currentTimeDisplay');
+        }
+        
         // Initialize YouTube API
         this.initializeYouTubeAPI();
         
@@ -59,12 +71,6 @@ class MusicPlayer {
         this.trackArtist = document.getElementById('trackArtist');
         this.currentTimeDisplay = document.getElementById('currentTimeDisplay');
         this.totalTimeDisplay = document.getElementById('totalTimeDisplay');
-        
-        // Debug log để kiểm tra elements
-        console.log('Time display elements:', {
-            currentTimeDisplay: this.currentTimeDisplay,
-            totalTimeDisplay: this.totalTimeDisplay
-        });
         
         // Progress bars
         this.progressBar = document.querySelector('.progress-bar');
@@ -124,35 +130,32 @@ class MusicPlayer {
         
         // Audio events với tối ưu cho smooth time updates
         this.audio.addEventListener('loadedmetadata', () => {
-            console.log('Audio metadata loaded:', this.audio.duration);
+            console.log('Audio metadata loaded, duration:', this.audio.duration);
             this.updateDuration();
-            this.updateProgress(); // Gọi ngay sau khi load metadata
         });
-        this.audio.addEventListener('timeupdate', () => this.updateProgress());
+        this.audio.addEventListener('timeupdate', () => {
+            console.log('Audio timeupdate event, currentTime:', this.audio.currentTime);
+            this.updateProgress();
+        });
         this.audio.addEventListener('ended', () => this.onTrackEnded());
         this.audio.addEventListener('error', (e) => this.onAudioError(e));
         this.audio.addEventListener('loadstart', () => {
-            console.log('Audio loading started');
+            console.log('Audio loadstart event');
             this.resetProgressDisplay();
         });
         this.audio.addEventListener('canplay', () => {
-            console.log('Audio can play');
-            this.updateProgress();
-        });
-        this.audio.addEventListener('loadeddata', () => {
-            console.log('Audio data loaded');
+            console.log('Audio canplay event');
             this.updateProgress();
         });
         
         // Thêm event cho smooth progress tracking
         this.audio.addEventListener('play', () => {
-            console.log('Audio play event fired');
+            console.log('Audio play event');
             this.startSmoothProgressTracking();
-            this.updateProgress(); // Gọi ngay khi play
         });
         
         this.audio.addEventListener('pause', () => {
-            console.log('Audio pause event fired');
+            console.log('Audio pause event');
             this.stopSmoothProgressTracking();
         });
         
@@ -338,15 +341,10 @@ class MusicPlayer {
         
         console.log('Starting smooth progress tracking for audio');
         
-        // Update progress mượt mà cho audio player
+        // Update progress mượt mà cho audio player - loại bỏ điều kiện duration
         this.audioProgressInterval = setInterval(() => {
-            if (this.currentPlayerType === 'audio' && this.audio && !this.audio.paused) {
+            if (this.currentPlayerType === 'audio' && !this.audio.paused && this.audio.src) {
                 this.updateProgress();
-                
-                // Debug log
-                if (this.audio.currentTime !== undefined && this.audio.duration !== undefined) {
-                    console.log('Smooth tracking - Current:', this.audio.currentTime, 'Duration:', this.audio.duration);
-                }
             }
         }, 100); // Update every 100ms cho cực kỳ smooth
     }
@@ -506,9 +504,6 @@ class MusicPlayer {
         this.trackArtist.textContent = track.artist;
         this.albumCover.src = track.cover;
         
-        // Reset progress trước khi load track mới
-        this.resetProgressDisplay();
-        
         // Validate track has URL
         if (!track.url || track.url.trim() === '') {
             console.log('Invalid URL for track:', track.title);
@@ -520,11 +515,7 @@ class MusicPlayer {
         this.attemptPlayback(track);
         
         this.renderPlaylist();
-        
-        // Force update progress after a small delay để đảm bảo audio đã load
-        setTimeout(() => {
-            this.updateProgress();
-        }, 200);
+        this.updateProgress();
     }
 
     findNextPlayableTrack(currentIndex) {
@@ -668,6 +659,12 @@ class MusicPlayer {
                         console.log('Audio playback started successfully');
                         this.isPlaying = true;
                         this.updatePlayButtonUI();
+                        
+                        // Force immediate progress update
+                        setTimeout(() => {
+                            this.updateProgress();
+                        }, 100);
+                        
                         resolve();
                     })
                     .catch(reject);
@@ -700,15 +697,10 @@ class MusicPlayer {
         this.mainPlayBtn.innerHTML = '<i class="fas fa-pause"></i>';
         document.querySelector('.music-player').classList.add('playing');
         
-        // Force update progress ngay sau khi play
-        setTimeout(() => {
-            this.updateProgress();
-        }, 100);
-        
-        // Và update định kỳ trong trường hợp timeupdate event không fire
-        setTimeout(() => {
-            this.updateProgress();
-        }, 500);
+        // Bắt đầu smooth progress tracking cho audio
+        if (this.currentPlayerType === 'audio') {
+            this.startSmoothProgressTracking();
+        }
     }
     
     autoSkipToNextTrack() {
@@ -1242,41 +1234,39 @@ class MusicPlayer {
         let duration = 0;
         let percentage = 0;
 
+        console.log('updateProgress called, playerType:', this.currentPlayerType, 'isPlaying:', this.isPlaying);
+
         if (this.currentPlayerType === 'youtube' && this.youtubePlayer && this.youtubePlayerReady) {
             // YouTube player progress
             try {
                 currentTime = this.youtubePlayer.getCurrentTime() || 0;
                 duration = this.youtubePlayer.getDuration() || 0;
+                console.log('YouTube time:', currentTime, 'duration:', duration);
             } catch (error) {
                 console.warn('Error getting YouTube player time:', error);
                 return;
             }
-        } else if (this.currentPlayerType === 'audio' && this.audio && this.audio.readyState >= 1) {
-            // Audio player progress - kiểm tra readyState thay vì chỉ duration
+        } else if (this.currentPlayerType === 'audio' && this.audio.src) {
+            // Audio player progress - loại bỏ điều kiện this.audio.duration
             currentTime = this.audio.currentTime || 0;
             duration = this.audio.duration || 0;
+            console.log('Audio time:', currentTime, 'duration:', duration, 'audio.src:', this.audio.src);
             
-            // Debug log để kiểm tra
-            if (this.isPlaying) {
-                console.log('Audio progress:', { 
-                    currentTime, 
-                    duration, 
-                    readyState: this.audio.readyState,
-                    networkState: this.audio.networkState,
-                    src: this.audio.src 
-                });
+            // Cập nhật thời gian ngay cả khi duration chưa có
+            if (currentTime >= 0) {
+                this.currentTimeDisplay.textContent = this.formatTime(currentTime);
+            }
+            
+            if (duration > 0) {
+                this.totalTimeDisplay.textContent = this.formatTime(duration);
             }
         } else {
-            // No valid player or duration - nhưng vẫn hiển thị 0:00 thay vì reset
-            if (this.currentPlayerType === 'audio' && this.audio && this.audio.src) {
-                // Nếu có audio src nhưng chưa load xong, hiển thị 0:00 thay vì reset
-                this.currentTimeDisplay.textContent = '0:00';
-                this.totalTimeDisplay.textContent = this.audio.duration ? this.formatTime(this.audio.duration) : '0:00';
-                return;
-            } else {
+            console.log('No valid player, resetting display');
+            // Chỉ reset khi không có player nào active
+            if (!this.isPlaying) {
                 this.resetProgressDisplay();
-                return;
             }
+            return;
         }
 
         // Calculate percentage (ensure we don't divide by zero)
@@ -1298,38 +1288,17 @@ class MusicPlayer {
         // Update progress handle position với smooth animation
         this.progressHandle.style.left = `${percentage}%`;
         
-        // Format và update time displays với animation
+        // Format và update time displays - luôn update để đảm bảo hiển thị
         const formattedCurrentTime = this.formatTime(currentTime);
         const formattedDuration = this.formatTime(duration);
         
-        // Debug log để kiểm tra
-        console.log('Updating progress display:', {
-            currentTime,
-            duration,
-            formattedCurrentTime,
-            formattedDuration,
-            percentage,
-            elements: {
-                currentTimeDisplay: !!this.currentTimeDisplay,
-                totalTimeDisplay: !!this.totalTimeDisplay
-            }
-        });
+        console.log('Updating time display:', formattedCurrentTime, '/', formattedDuration);
         
-        // Force update time displays
-        if (this.currentTimeDisplay) {
-            if (this.currentTimeDisplay.textContent !== formattedCurrentTime) {
-                this.animateTimeChange(this.currentTimeDisplay, formattedCurrentTime);
-            }
-        } else {
-            console.error('currentTimeDisplay element not found!');
-        }
+        // Update time displays directly without complex animation for debugging
+        this.currentTimeDisplay.textContent = formattedCurrentTime;
         
-        if (this.totalTimeDisplay) {
-            if (this.totalTimeDisplay.textContent !== formattedDuration) {
-                this.animateTimeChange(this.totalTimeDisplay, formattedDuration);
-            }
-        } else {
-            console.error('totalTimeDisplay element not found!');
+        if (duration > 0) {
+            this.totalTimeDisplay.textContent = formattedDuration;
         }
         
         // Add visual feedback for progress updates
@@ -1480,18 +1449,17 @@ class MusicPlayer {
     }
 
     updateDuration() {
-        if (this.audio && this.audio.duration && isFinite(this.audio.duration)) {
-            const formattedDuration = this.formatTime(this.audio.duration);
-            this.totalTimeDisplay.textContent = formattedDuration;
-            console.log('Duration updated:', formattedDuration);
-        } else {
-            console.log('Duration not available yet:', this.audio?.duration);
+        if (this.audio.duration) {
+            this.totalTimeDisplay.textContent = this.formatTime(this.audio.duration);
         }
     }
 
     formatTime(seconds) {
+        console.log('formatTime called with:', seconds);
+        
         // Handle invalid or infinite values
         if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) {
+            console.log('Invalid seconds, returning 0:00');
             return '0:00';
         }
 
@@ -1499,14 +1467,18 @@ class MusicPlayer {
         const minutes = Math.floor((seconds % 3600) / 60);
         const remainingSeconds = Math.floor(seconds % 60);
 
+        let result;
         // Format based on duration với zero-padding
         if (hours > 0) {
             // For videos/tracks longer than 1 hour
-            return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+            result = `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
         } else {
             // Standard format for most tracks với better formatting
-            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+            result = `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
         }
+        
+        console.log('formatTime result:', result);
+        return result;
     }
 
     // Enhanced format time với tối ưu cho hiển thị
